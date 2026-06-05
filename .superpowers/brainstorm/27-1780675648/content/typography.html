@@ -1,0 +1,59 @@
+<h2>字体方案</h2>
+<p class="subtitle">便签内容的字体风格。Windows 上渲染表现各不同。</p>
+
+<style>
+  .type-sample {
+    padding: 20px 24px;
+    border-radius: 8px;
+    background: #fff;
+    border: 1px solid #eee;
+    margin-bottom: 12px;
+  }
+  .type-title { font-weight: 600; font-size: 15px; margin-bottom: 6px; }
+  .type-body { font-size: 13px; line-height: 1.7; color: #555; }
+  .type-label { font-size: 11px; color: #999; margin-top: 6px; }
+</style>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 16px;">
+      <div class="type-sample" style="font-family: 'Segoe UI', system-ui, sans-serif;">
+        <div class="type-title" style="font-family: 'Segoe UI';">买牛奶 — 下班路上采购清单</div>
+        <div class="type-body" style="font-family: 'Segoe UI';">脱脂牛奶 × 2、全麦面包、鸡胸肉、西兰花。The quick brown fox jumps over the lazy dog.</div>
+        <div class="type-label">Segoe UI — Windows 原生，清爽现代，零额外体积</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Segoe UI</h3>
+      <p>Windows 系统字体，无需加载，渲染质量最佳。现代干净。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 16px;">
+      <div class="type-sample" style="font-family: 'Inter', system-ui, sans-serif;">
+        <div class="type-title" style="font-family: 'Inter';">买牛奶 — 下班路上采购清单</div>
+        <div class="type-body" style="font-family: 'Inter';">脱脂牛奶 × 2、全麦面包、鸡胸肉、西兰花。The quick brown fox jumps over the lazy dog.</div>
+        <div class="type-label">Inter — 为屏幕阅读优化，中性专业，需内嵌字体文件 (~100KB)</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Inter</h3>
+      <p>最流行的 UI 字体，字形中性无风格，适合长时间阅读。需打包字体文件。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 16px;">
+      <div class="type-sample" style="font-family: 'Noto Sans SC', system-ui, sans-serif;">
+        <div class="type-title" style="font-family: 'Noto Sans SC';">买牛奶 — 下班路上采购清单</div>
+        <div class="type-body" style="font-family: 'Noto Sans SC';">脱脂牛奶 × 2、全麦面包、鸡胸肉、西兰花。The quick brown fox jumps over the lazy dog.</div>
+        <div class="type-label">Noto Sans SC — 中英文混排最优解，字形完整，需内嵌 (~500KB)</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Noto Sans SC</h3>
+      <p>Google 出品，中英文混排质量最高。中文字形完整优雅，但字体文件较大。</p>
+    </div>
+  </div>
+</div>

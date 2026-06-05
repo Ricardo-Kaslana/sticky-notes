@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+/* Custom scrollbar for sidebar */
+.sidebar-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 2px;
+}
+
+/* Floating note window styles */
+.note-window {
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+.note-window .ProseMirror {
+  outline: none;
+  min-height: 120px;
+}
+.note-window .ProseMirror p {
+  margin: 0 0 4px 0;
+}
+.note-window .ProseMirror ul,
+.note-window .ProseMirror ol {
+  padding-left: 16px;
+  margin: 4px 0;
+}

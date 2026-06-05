@@ -1,0 +1,71 @@
+<h2>配色方案</h2>
+<p class="subtitle">6 种便签颜色标记。每张便签选一种颜色作为左侧强调条 + 管理视图卡片背景。</p>
+
+<style>
+  .palette-row {
+    display: flex; gap: 10px; margin-bottom: 8px;
+  }
+  .swatch {
+    width: 48px; height: 48px; border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  }
+  .swatch-label {
+    font-size: 10px; color: #999; text-align: center; margin-top: 4px;
+  }
+  .swatch-wrap {
+    display: flex; flex-direction: column; align-items: center;
+  }
+</style>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 24px;">
+      <div class="palette-row">
+        <div class="swatch-wrap"><div class="swatch" style="background:#fdcb6e;"></div><div class="swatch-label">sun</div></div>
+        <div class="swatch-wrap"><div class="swatch" style="background:#e17055;"></div><div class="swatch-label">coral</div></div>
+        <div class="swatch-wrap"><div class="swatch" style="background:#74b9ff;"></div><div class="swatch-label">sky</div></div>
+        <div class="swatch-wrap"><div class="swatch" style="background:#55efc4;"></div><div class="swatch-label">mint</div></div>
+        <div class="swatch-wrap"><div class="swatch" style="background:#a29bfe;"></div><div class="swatch-label">lilac</div></div>
+        <div class="swatch-wrap"><div class="swatch" style="background:#fab1a0;"></div><div class="swatch-label">peach</div></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>柔和活泼</h3>
+      <p>温暖、明亮、有活力。适合创意工作和日常使用。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 24px;">
+      <div class="palette-row">
+        <div class="swatch-wrap"><div class="swatch" style="background:#ffeaa7;"></div><div class="swatch-label">cream</div></div>
+        <div class="swatch-wrap"><div class="swatch" style="background:#dfe6e9;"></div><div class="swatch-label">cloud</div></div>
+        <div class="swatch-wrap"><div class="swatch" style="background:#81ecec;"></div><div class="swatch-label">ice</div></div>
+        <div class="swatch-wrap"><div class="swatch" style="background:#ff7675;"></div><div class="swatch-label">rose</div></div>
+        <div class="swatch-wrap"><div class="swatch" style="background:#b2bec3;"></div><div class="swatch-label">stone</div></div>
+        <div class="swatch-wrap"><div class="swatch" style="background:#ffeaa7;"></div><div class="swatch-label">honey</div></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>低饱和莫兰迪</h3>
+      <p>灰度调和、高级克制。长时间使用不疲劳，偏专业感。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 24px;">
+      <div class="palette-row">
+        <div class="swatch-wrap"><div class="swatch" style="background:#fff9c4;"></div><div class="swatch-label">paper</div></div>
+        <div class="swatch-wrap"><div class="swatch" style="background:#f8bbd0;"></div><div class="swatch-label">blush</div></div>
+        <div class="swatch-wrap"><div class="swatch" style="background:#b3e5fc;"></div><div class="swatch-label">light blue</div></div>
+        <div class="swatch-wrap"><div class="swatch" style="background:#c8e6c9;"></div><div class="swatch-label">sage</div></div>
+        <div class="swatch-wrap"><div class="swatch" style="background:#ffe0b2;"></div><div class="swatch-label">apricot</div></div>
+        <div class="swatch-wrap"><div class="swatch" style="background:#d1c4e9;"></div><div class="swatch-label">lavender</div></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>清新粉彩</h3>
+      <p>超低饱和度、纸质感。极简、干净、日系文具风格。</p>
+    </div>
+  </div>
+</div>
