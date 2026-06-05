@@ -1,11 +1,12 @@
-import "./App.css";
+import { Route, Routes } from "@solidjs/router";
+import MainView from "./routes/MainView";
+import NoteView from "./routes/NoteView";
 
-function App() {
+export default function App() {
   return (
-    <main class="container">
-      <h1>Sticky Notes</h1>
-    </main>
+    <Routes>
+      <Route path="/" component={MainView} />
+      <Route path="/note/:id" component={NoteView} />
+    </Routes>
   );
 }
-
-export default App;
