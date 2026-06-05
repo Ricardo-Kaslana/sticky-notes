@@ -1,0 +1,55 @@
+import { invoke } from "@tauri-apps/api/core";
+import type { Note, Settings } from "./types";
+
+export async function listNotes(): Promise<Note[]> {
+  return invoke<Note[]>("list_notes");
+}
+
+export async function readNote(id: string): Promise<Note> {
+  return invoke<Note>("read_note", { id });
+}
+
+export async function writeNote(id: string, note: Note): Promise<void> {
+  return invoke("write_note", { id, note });
+}
+
+export async function deleteNote(id: string): Promise<void> {
+  return invoke("delete_note", { id });
+}
+
+export async function saveAttachment(
+  noteId: string,
+  fileName: string,
+  data: number[]
+): Promise<string> {
+  return invoke<string>("save_attachment", { noteId, fileName, data });
+}
+
+export async function readSettings(): Promise<Settings> {
+  return invoke<Settings>("read_settings");
+}
+
+export async function writeSettings(settings: Settings): Promise<void> {
+  return invoke("write_settings", { settings });
+}
+
+export async function openNoteWindow(
+  noteId: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+): Promise<void> {
+  return invoke("open_note_window", { noteId, x, y, width, height });
+}
+
+export async function closeNoteWindow(noteId: string): Promise<void> {
+  return invoke("close_note_window", { noteId });
+}
+
+export async function setNoteWindowPinned(
+  noteId: string,
+  pinned: boolean
+): Promise<void> {
+  return invoke("set_note_window_pinned", { noteId, pinned });
+}
