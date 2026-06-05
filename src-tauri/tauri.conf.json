@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/main/packages/tauri-utils/schema.json",
   "productName": "Sticky Notes",
   "version": "0.1.0",
-  "identifier": "com.sticky-notes.app",
+  "identifier": "sticky-notes",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -13,8 +13,10 @@
     "windows": [
       {
         "title": "Sticky Notes",
-        "width": 800,
-        "height": 600
+        "width": 960,
+        "height": 640,
+        "resizable": true,
+        "fullscreen": false
       }
     ],
     "security": {
