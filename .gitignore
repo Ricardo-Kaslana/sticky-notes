@@ -24,5 +24,11 @@ src-tauri/target/
 # Logs
 *.log
 
+# Claude
+.claude/
+
+# Superpowers
+.superpowers/
+
 # Backup files
 *.bak
