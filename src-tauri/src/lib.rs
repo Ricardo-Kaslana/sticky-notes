@@ -1,5 +1,6 @@
 pub mod models;
 pub mod commands;
+pub mod windows;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
