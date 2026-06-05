@@ -1,5 +1,5 @@
-import { Note, COLORS, getColorHex } from "../lib/types";
-import { openNoteWindow, closeNoteWindow, deleteNote } from "../lib/invoke";
+import { Note, getColorHex } from "../lib/types";
+import { openNoteWindow, closeNoteWindow } from "../lib/invoke";
 import { deleteNoteById } from "../stores/notesStore";
 import { createSignal, Show } from "solid-js";
 import ConfirmDialog from "./ConfirmDialog";

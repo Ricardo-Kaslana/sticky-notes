@@ -54,7 +54,7 @@ export default function ContextMenu(props: ContextMenuProps) {
         style={{ left: `${props.x}px`, top: `${props.y}px` }}
       >
         <For each={props.items}>
-          {(item, i) => (
+          {(item) => (
             <>
               {item.label === "---" ? (
                 <div class="border-t border-gray-100 my-0.5" />

@@ -1,5 +1,5 @@
 import { createStore, produce } from "solid-js/store";
-import type { Note, ColorKey } from "../lib/types";
+import type { Note } from "../lib/types";
 import * as api from "../lib/invoke";
 
 const [notes, setNotes] = createStore<Note[]>([]);

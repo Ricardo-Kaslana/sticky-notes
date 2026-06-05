@@ -1,7 +1,5 @@
-import { createSignal, createMemo, For } from "solid-js";
+import { createMemo, For } from "solid-js";
 import { notes, getAllTags } from "../stores/notesStore";
-import { openNoteWindow } from "../lib/invoke";
-import { Note } from "../lib/types";
 
 interface SidebarProps {
   searchQuery: string;
