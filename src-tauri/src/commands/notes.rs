@@ -1,6 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 use crate::models::Note;
 
 fn notes_dir(app: &AppHandle) -> PathBuf {
@@ -45,7 +45,9 @@ pub fn write_note(app: AppHandle, id: String, mut note: Note) -> Result<(), Stri
     note.updated_at = chrono::Utc::now().to_rfc3339();
     let path = dir.join(format!("{}.json", id));
     let json = serde_json::to_string_pretty(&note).map_err(|e| e.to_string())?;
-    fs::write(&path, json).map_err(|e| e.to_string())
+    fs::write(&path, json).map_err(|e| e.to_string())?;
+    let _ = app.emit("note-updated", &note);
+    Ok(())
 }
 
 #[tauri::command]
@@ -55,6 +57,7 @@ pub fn delete_note(app: AppHandle, id: String) -> Result<(), String> {
     if path.exists() {
         fs::remove_file(&path).map_err(|e| e.to_string())?;
     }
+    let _ = app.emit("note-deleted", &id);
     Ok(())
 }
 
