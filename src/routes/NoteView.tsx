@@ -1,7 +1,6 @@
 import { useParams } from "@solidjs/router";
-import { createSignal, createEffect, Show } from "solid-js";
-import { createEditor } from "solid-tiptap";
-import type { Editor } from "@tiptap/core";
+import { createSignal, createEffect, Show, onMount, onCleanup } from "solid-js";
+import { Editor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
@@ -23,41 +22,24 @@ export default function NoteView() {
   const [color, setColor] = createSignal("paper");
   const [pinned, setPinned] = createSignal(false);
   const [showColorPicker, setShowColorPicker] = createSignal(false);
+  const [editorReady, setEditorReady] = createSignal(false);
 
-  let editorRef: Editor | undefined;
   let editorContainer!: HTMLDivElement;
-
-  const editor = createEditor(() => ({
-    element: editorContainer,
-    extensions: [
-      StarterKit,
-      Underline,
-      Link.configure({ openOnClick: false }),
-      Image.configure({ inline: true }),
-      Placeholder.configure({ placeholder: "开始写..." }),
-    ],
-    onUpdate: () => {
-      autoSave();
-    },
-    editorProps: {
-      attributes: { class: "prose prose-sm max-w-none" },
-    },
-  }));
+  let editor: Editor | undefined;
 
   // Debounced auto-save
   const autoSave = debounce(async () => {
     const current = note();
-    if (!current || !editorRef) return;
+    if (!current || !editor) return;
     const updated: Note = {
       ...current,
       title: title(),
-      content: editorRef.getHTML(),
+      content: editor.getHTML(),
       tags: tags(),
       color: color() as Note["color"],
       pinned: pinned(),
       updatedAt: new Date().toISOString(),
     };
-    // Persist window position
     try {
       const { getCurrentWindow } = await import("@tauri-apps/api/window");
       const win = getCurrentWindow();
@@ -75,34 +57,58 @@ export default function NoteView() {
     emitNoteUpdated(updated);
   }, 2000);
 
-  // Load note data
-  createEffect(async () => {
-    const data = await api.readNote(params.id);
-    setNote(data);
-    setTitle(data.title);
-    setTags(data.tags);
-    setColor(data.color);
-    setPinned(data.pinned);
+  // Create editor after DOM mounts
+  onMount(() => {
+    if (!editorContainer) return;
 
-    // Set editor content once it's ready
-    setTimeout(() => {
-      const e = editor();
-      if (e) {
-        editorRef = e;
-        e.commands.setContent(data.content);
-      }
-    }, 100);
+    editor = new Editor({
+      element: editorContainer,
+      extensions: [
+        StarterKit,
+        Underline,
+        Link.configure({ openOnClick: false }),
+        Image.configure({ inline: true }),
+        Placeholder.configure({ placeholder: "开始写..." }),
+      ],
+      editorProps: {
+        attributes: { class: "prose prose-sm max-w-none outline-none" },
+      },
+      onUpdate: () => {
+        autoSave();
+      },
+    });
+
+    setEditorReady(true);
+  });
+
+  // Load note data after editor is ready
+  createEffect(() => {
+    if (!editorReady()) return;
+    const id = params.id;
+    api.readNote(id).then((data) => {
+      setNote(data);
+      setTitle(data.title);
+      setTags(data.tags);
+      setColor(data.color);
+      setPinned(data.pinned);
+      if (editor) editor.commands.setContent(data.content);
+    });
+  });
+
+  // Cleanup on unmount
+  onCleanup(() => {
+    editor?.destroy();
   });
 
   // Handle close — save and destroy window
   const handleClose = async () => {
     autoSave.cancel();
     const current = note();
-    if (current && editorRef) {
+    if (current && editor) {
       const updated: Note = {
         ...current,
         title: title(),
-        content: editorRef.getHTML(),
+        content: editor.getHTML(),
         tags: tags(),
         color: color() as Note["color"],
         pinned: pinned(),
@@ -181,12 +187,15 @@ export default function NoteView() {
 
       {/* Toolbar */}
       <div class="px-4">
-        <NoteToolbar editor={editor()} />
+        <NoteToolbar editor={editor ?? null} />
       </div>
 
       {/* Editor */}
       <div class="flex-1 px-4 pb-2 overflow-y-auto">
-        <div ref={editorContainer} class="min-h-[120px]" onClick={() => editor()?.commands.focus()} />
+        <div
+          ref={editorContainer!}
+          class="min-h-[120px]"
+        />
       </div>
 
       {/* Tags */}
