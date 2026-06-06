@@ -9,16 +9,15 @@ function App() {
   const [noteId, setNoteId] = createSignal("");
 
   createEffect(() => {
-    const path = window.location.pathname.replace(/\/+$/, "").replace(/^\/+/, "");
-    console.log("[App] path:", path);
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("noteId");
+    console.log("[App] search:", window.location.search, "noteId:", id);
 
-    if (!path || path === "/" || path === "" || path === "index.html") {
-      setView("main");
-    } else if (path.startsWith("note/")) {
+    if (id) {
       setView("note");
-      setNoteId(path.replace("note/", ""));
+      setNoteId(id);
     } else {
-      setView("unknown");
+      setView("main");
     }
   });
 

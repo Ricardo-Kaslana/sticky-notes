@@ -14,7 +14,7 @@ pub fn create_note_window(
         return Ok(());
     }
 
-    let url = format!("note/{}", note_id);
+    let url = format!("?noteId={}", note_id);
     WebviewWindowBuilder::new(app, &label, WebviewUrl::App(url.into()))
         .title("")
         .inner_size(width, height)

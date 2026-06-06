@@ -15,7 +15,17 @@
     </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div style="padding:2rem;color:#999;">Loading...</div></div>
+    <script>
+      window.onerror = function(msg, url, line, col, err) {
+        document.getElementById('root').innerHTML =
+          '<div style="padding:2rem;color:red;font-size:14px;">' +
+          '<b>JS Error:</b><br>' + msg + '<br>' +
+          'at ' + url + ':' + line + '<br>' +
+          (err && err.stack ? '<pre style="font-size:11px;">' + err.stack + '</pre>' : '') +
+          '</div>';
+      };
+    </script>
     <script type="module" src="/src/index.tsx"></script>
   </body>
 </html>
