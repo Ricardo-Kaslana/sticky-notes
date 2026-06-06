@@ -1,12 +1,5 @@
-import { Route } from "@solidjs/router";
-import MainView from "./routes/MainView";
-import NoteView from "./routes/NoteView";
-
+// App routing is now handled directly in index.tsx
+// This file is kept for potential future use
 export default function App() {
-  return (
-    <>
-      <Route path="/" component={MainView} />
-      <Route path="/note/:id" component={NoteView} />
-    </>
-  );
+  return null;
 }

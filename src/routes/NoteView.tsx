@@ -1,4 +1,3 @@
-import { useParams } from "@solidjs/router";
 import { createSignal, createEffect, Show, onMount, onCleanup } from "solid-js";
 import { Editor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
@@ -14,8 +13,7 @@ import NoteToolbar from "../components/NoteToolbar";
 import TagInput from "../components/TagInput";
 import { debounce } from "../utils/debounce";
 
-export default function NoteView() {
-  const params = useParams<{ id: string }>();
+export default function NoteView(props: { noteId: string }) {
   const [note, setNote] = createSignal<Note | null>(null);
   const [title, setTitle] = createSignal("");
   const [tags, setTags] = createSignal<string[]>([]);
@@ -107,7 +105,7 @@ export default function NoteView() {
     const ready = editorReady();
     if (!ready) return;
 
-    const id = params.id;
+    const id = props.noteId;
     console.log("[NoteView] Loading note:", id);
 
     api.readNote(id).then((data) => {
@@ -152,13 +150,13 @@ export default function NoteView() {
         console.error("[NoteView] Failed to save on close:", e);
       }
     }
-    await api.closeNoteWindow(params.id);
+    await api.closeNoteWindow(props.noteId);
   };
 
   const handlePinToggle = async () => {
     const newPinned = !pinned();
     setPinned(newPinned);
-    await api.setNoteWindowPinned(params.id, newPinned);
+    await api.setNoteWindowPinned(props.noteId, newPinned);
   };
 
   const colorHex = () => getColorHex(color() as Note["color"]);
