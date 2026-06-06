@@ -23,6 +23,7 @@ export default function NoteView() {
   const [pinned, setPinned] = createSignal(false);
   const [showColorPicker, setShowColorPicker] = createSignal(false);
   const [editorReady, setEditorReady] = createSignal(false);
+  const [error, setError] = createSignal<string | null>(null);
 
   let editorContainer!: HTMLDivElement;
   let editor: Editor | undefined;
@@ -51,71 +52,105 @@ export default function NoteView() {
         width: size.width / await win.scaleFactor(),
         height: size.height / await win.scaleFactor(),
       };
-    } catch {}
-    await api.writeNote(current.id, updated);
-    setNote(updated);
-    emitNoteUpdated(updated);
+    } catch (e) {
+      console.error("Failed to save window position:", e);
+    }
+    try {
+      await api.writeNote(current.id, updated);
+      setNote(updated);
+      emitNoteUpdated(updated);
+    } catch (e) {
+      console.error("Failed to save note:", e);
+    }
   }, 2000);
 
   // Create editor after DOM mounts
   onMount(() => {
-    if (!editorContainer) return;
+    console.log("[NoteView] onMount, container:", editorContainer);
+    if (!editorContainer) {
+      setError("Editor container not found");
+      return;
+    }
 
-    editor = new Editor({
-      element: editorContainer,
-      extensions: [
-        StarterKit,
-        Underline,
-        Link.configure({ openOnClick: false }),
-        Image.configure({ inline: true }),
-        Placeholder.configure({ placeholder: "开始写..." }),
-      ],
-      editorProps: {
-        attributes: { class: "prose prose-sm max-w-none outline-none" },
-      },
-      onUpdate: () => {
-        autoSave();
-      },
-    });
-
-    setEditorReady(true);
+    try {
+      editor = new Editor({
+        element: editorContainer,
+        extensions: [
+          StarterKit.configure({
+            heading: false,
+            codeBlock: false,
+            blockquote: false,
+            horizontalRule: false,
+          }),
+          Underline,
+          Link.configure({ openOnClick: false }),
+          Image.configure({ inline: true }),
+          Placeholder.configure({ placeholder: "开始写..." }),
+        ],
+        editorProps: {
+          attributes: { class: "prose prose-sm max-w-none outline-none" },
+        },
+        onUpdate: () => {
+          autoSave();
+        },
+      });
+      console.log("[NoteView] Editor created successfully");
+      setEditorReady(true);
+    } catch (e) {
+      console.error("[NoteView] Failed to create editor:", e);
+      setError(`Failed to create editor: ${e}`);
+    }
   });
 
   // Load note data after editor is ready
   createEffect(() => {
-    if (!editorReady()) return;
+    const ready = editorReady();
+    if (!ready) return;
+
     const id = params.id;
+    console.log("[NoteView] Loading note:", id);
+
     api.readNote(id).then((data) => {
+      console.log("[NoteView] Note loaded:", data.id, data.title);
       setNote(data);
       setTitle(data.title);
       setTags(data.tags);
       setColor(data.color);
       setPinned(data.pinned);
-      if (editor) editor.commands.setContent(data.content);
+      if (editor) {
+        editor.commands.setContent(data.content);
+      }
+    }).catch((e) => {
+      console.error("[NoteView] Failed to load note:", e);
+      setError(`Failed to load note: ${e}`);
     });
   });
 
   // Cleanup on unmount
   onCleanup(() => {
+    autoSave.cancel();
     editor?.destroy();
   });
 
-  // Handle close — save and destroy window
   const handleClose = async () => {
     autoSave.cancel();
     const current = note();
     if (current && editor) {
-      const updated: Note = {
-        ...current,
-        title: title(),
-        content: editor.getHTML(),
-        tags: tags(),
-        color: color() as Note["color"],
-        pinned: pinned(),
-        updatedAt: new Date().toISOString(),
-      };
-      await api.writeNote(current.id, updated);
-      emitNoteUpdated(updated);
+      try {
+        const updated: Note = {
+          ...current,
+          title: title(),
+          content: editor.getHTML(),
+          tags: tags(),
+          color: color() as Note["color"],
+          pinned: pinned(),
+          updatedAt: new Date().toISOString(),
+        };
+        await api.writeNote(current.id, updated);
+        emitNoteUpdated(updated);
+      } catch (e) {
+        console.error("[NoteView] Failed to save on close:", e);
+      }
     }
     await api.closeNoteWindow(params.id);
   };
@@ -130,6 +165,13 @@ export default function NoteView() {
 
   return (
     <div class="note-window h-full flex flex-col bg-white select-none">
+      {/* Error banner */}
+      <Show when={error()}>
+        <div class="bg-red-100 text-red-700 text-xs p-2 text-center">
+          {error()}
+        </div>
+      </Show>
+
       {/* Drag handle / header */}
       <div
         class="flex items-center justify-between px-4 pt-3 pb-1"
