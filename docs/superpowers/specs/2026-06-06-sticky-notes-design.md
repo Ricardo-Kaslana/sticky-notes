@@ -250,3 +250,81 @@ When a note is deleted from management view:
 - Multi-language support
 - macOS / Linux builds
 - Note pinning to specific virtual desktops
+
+
+---
+
+# Sticky Notes — Implementation Status (addendum, 2026-07-14)
+
+> Appended to the original design spec above on 2026-07-14. The original spec describes v1 design intent; this addendum records what was actually built in v0.1.0, the deltas from spec, and what is still pending.
+
+## Shipped as v0.1.0 on 2026-06-06
+
+All 18 tasks in the [implementation plan](../plans/2026-06-06-sticky-notes.md) are committed. The verification checklist there has been marked up against actual code.
+
+## Spec sections that match the implementation
+
+- §1 Tech Stack — Tauri 2.x + SolidJS 1.x + TipTap 2.x + Tailwind CSS 4 + TS/Rust
+- §2 Architecture — two-layer (Rust core + SolidJS app) + two routes (main + note)
+- §3 Data Model — schema matches; JSON camelCase on the wire; `NotePosition` defaults to `{ x: 100, y: 100, width: 300, height: 240 }`
+- §4 Main Window layout — masonry grid + left sidebar
+- §4 Floating window — borderless, draggable, pin button, color change from window, TipTap editor, tags
+- §5 Pop-out / close / tray / create / delete — all match spec
+- §6 File I/O commands — all commands listed in the spec are implemented
+- §7 Cross-window sync — matches (note-updated / note-deleted events)
+- §8 Performance & Constraints — not benchmarked in v0.1.0
+
+## Spec deltas (built slightly differently)
+
+### Note-ID delivery: initialization_script instead of URL path
+
+The spec said the floating window loads /note/:id. In practice Tauri WebView + the build setup made URL-path routing unreliable; the build was switched to:
+
+- src-tauri/src/windows.rs injects window.__NOTE_ID__ via Tauri initialization_script
+- src/index.tsx reads __NOTE_ID__ first; falls back to ?noteId= for Vite dev only
+- URL stays index.html regardless of note
+
+Same UX (each note gets its own webview), different mechanism for handing the ID to the frontend.
+
+### Card click interaction
+
+The spec described click → select with an inline preview panel. The implementation does not have a select state or preview — double-click pops out, right-click shows the context menu, single-click does nothing. The preview panel was scoped out to keep v0.1.0 focused.
+
+### Color picker
+
+src/components/ColorPicker.tsx was created per the plan but is not imported anywhere. The floating window inlines its own color row using the COLORS constant from lib/types.ts. The component is kept as dead code for future use; either delete it or wire it up in v0.2.
+
+### Image paste/drag-drop
+
+The TipTap Image extension is configured (Image.configure({ inline: true })), but there is no toolbar button or paste handler in v0.1.0. The save_attachment / delete_attachment Rust commands are implemented and ready; only the UI hook is missing.
+
+### Routing layer
+
+src/App.tsx is a return null placeholder. Routing lives directly in src/index.tsx as a manual Switch/Match (no @solidjs/router — that dependency was dropped because it did not behave correctly in Tauri WebView).
+
+### Settings store
+
+stores/settingsStore.ts was planned but never created. readSettings() / writeSettings() are reachable via invoke.ts but no UI consumes them. The Settings model exists on both Rust and TS sides; only the frontend store wiring is missing.
+
+### Tauri command naming
+
+§6 lists create_window / destroy_window. The actual API is open_note_window / close_note_window / set_note_window_pinned — the spec wording was loose; the implementation has one extra command (set_note_window_pinned).
+
+## Spec sections still aspirational (no code yet)
+
+- §9 Future Considerations — all of these (cloud sync, reminders, markdown export, themes, i18n, macOS/Linux, virtual-desktop pinning) are out of scope and have no code yet.
+
+## Where the implementation lives in the repo
+
+- Rust: src-tauri/src/{lib.rs, models.rs, commands/, windows.rs, tray.rs}
+- Frontend: src/{index.tsx, routes/, components/, stores/, lib/, utils/}
+- Tests: cargo test covers models.rs defaults + serialization + color lookup + sort order
+- No frontend tests in v0.1.0
+
+## Pointers for future readers
+
+- AGENTS.md — coding-agent conventions
+- CHANGELOG.md — what was built and what is missing
+- README.md — onboarding
+
+

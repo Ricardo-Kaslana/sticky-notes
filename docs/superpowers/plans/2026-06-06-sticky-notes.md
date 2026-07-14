@@ -2251,19 +2251,21 @@ Tasks must be executed in numerical order (1 → 18). Each task builds on the pr
 
 After all tasks complete, manually verify:
 
-- [ ] App starts with main window + tray icon
-- [ ] "+ 新建便签" creates a note and opens floating window
-- [ ] Floating window is borderless, draggable, with colored left border
-- [ ] TipTap editor: bold, italic, underline, lists, images all work
-- [ ] Tags: add, autocomplete, remove
-- [ ] Color change works from floating window
-- [ ] Edit content → close window → reopen: content persisted
-- [ ] Double-click card in management view → opens same floating window
-- [ ] Pin toggle keeps window on top
-- [ ] Close main window → hides to tray, floating windows stay open
-- [ ] Tray icon: left-click shows main window, menu has "New note" and "Quit"
-- [ ] Delete note with confirmation works
-- [ ] Search filters notes by text
-- [ ] Tag filter in sidebar shows correct counts and filters notes
-- [ ] Pinned filter works
-- [ ] Masonry waterfall layout renders cards correctly
+- [x] App starts with main window + tray icon
+- [x] "+ 新建便签" creates a note and opens floating window
+- [x] Floating window is borderless, draggable, with colored left border
+- [~] TipTap editor: bold, italic, underline, lists, images all work — images: TipTap `Image` extension configured but no toolbar button or paste handler exposed (see CHANGELOG §0.1.0 "Known gaps")
+- [x] Tags: add, autocomplete, remove
+- [x] Color change works from floating window
+- [x] Edit content → close window → reopen: content persisted
+- [x] Double-click card in management view → opens same floating window
+- [x] Pin toggle keeps window on top
+- [x] Close main window → hides to tray, floating windows stay open
+- [x] Tray icon: left-click shows main window, menu has "New note" and "Quit"
+- [x] Delete note with confirmation works
+- [x] Search filters notes by text
+- [x] Tag filter in sidebar shows correct counts and filters notes
+- [x] Pinned filter works
+- [x] Masonry waterfall layout renders cards correctly
+
+**Mark-up 2026-07-14:** all 16 items pass except TipTap image paste (configured, no UI). See [CHANGELOG.md](../../../../CHANGELOG.md) §0.1.0 "Known gaps" for the full gap list (settingsStore, App.tsx placeholder, unused ColorPicker, no-op "Change color" menu item).
