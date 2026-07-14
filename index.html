@@ -17,14 +17,51 @@
   <body>
     <div id="root"><div style="padding:2rem;color:#999;">Loading...</div></div>
     <script>
+      // Display an error in #root; used by all error handlers below
+      function showError(label, detail) {
+        var root = document.getElementById('root');
+        if (!root) return;
+        root.innerHTML = '';
+        var div = document.createElement('div');
+        div.style.cssText = 'padding:2rem;color:red;font-size:14px;';
+        var b = document.createElement('b');
+        b.textContent = label;
+        div.appendChild(b);
+        div.appendChild(document.createElement('br'));
+        div.appendChild(document.createTextNode(String(detail)));
+        root.appendChild(div);
+      }
+
+      // 1. Traditional JS runtime errors
       window.onerror = function(msg, url, line, col, err) {
-        document.getElementById('root').innerHTML =
-          '<div style="padding:2rem;color:red;font-size:14px;">' +
-          '<b>JS Error:</b><br>' + msg + '<br>' +
-          'at ' + url + ':' + line + '<br>' +
-          (err && err.stack ? '<pre style="font-size:11px;">' + err.stack + '</pre>' : '') +
-          '</div>';
+        var detail = String(msg) + '\nat ' + url + ':' + line;
+        if (err && err.stack) detail += '\n\n' + err.stack;
+        showError('JS Error:', detail);
       };
+
+      // 2. Resource load failures (module scripts, etc.)
+      window.addEventListener('error', function(e) {
+        if (e.target !== window) {
+          showError('Resource load failed:', e.target.src || e.target.href || e.target.tagName);
+        }
+      }, true);
+
+      // 3. Unhandled promise rejections
+      window.addEventListener('unhandledrejection', function(e) {
+        var detail = String(e.reason);
+        if (e.reason && e.reason.stack) detail += '\n\n' + e.reason.stack;
+        showError('Unhandled Promise:', detail);
+      });
+
+      // 4. Timeout — if app hasn't mounted after 20 s, show a warning
+      setTimeout(function() {
+        if (!window.__APP_MOUNTED__) {
+          var el = document.getElementById('root');
+          if (el && el.textContent && el.textContent.includes('Loading')) {
+            el.innerHTML = '<div style="padding:2rem;color:#c09853;font-size:14px;"><b>Still loading…</b><br>App did not initialise within 20 s.<br>Check the browser console (F12) for errors.</div>';
+          }
+        }
+      }, 20000);
     </script>
     <script type="module" src="/src/index.tsx"></script>
   </body>
