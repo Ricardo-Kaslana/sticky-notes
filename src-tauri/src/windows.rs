@@ -14,8 +14,8 @@ pub fn create_note_window(
         return Ok(());
     }
 
-    let url = format!("?noteId={}", note_id);
-    WebviewWindowBuilder::new(app, &label, WebviewUrl::App(url.into()))
+    let init_script = format!("window.__NOTE_ID__ = '{}';", note_id);
+    WebviewWindowBuilder::new(app, &label, WebviewUrl::App("index.html".into()))
         .title("")
         .inner_size(width, height)
         .position(x, y)
@@ -23,6 +23,7 @@ pub fn create_note_window(
         .resizable(true)
         .skip_taskbar(true)
         .visible(true)
+        .initialization_script(&init_script)
         .build()?;
 
     Ok(())

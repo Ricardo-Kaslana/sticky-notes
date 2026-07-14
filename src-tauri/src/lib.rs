@@ -12,7 +12,7 @@ pub fn run() {
             let _main = tauri::WebviewWindowBuilder::new(
                 app,
                 "main",
-                tauri::WebviewUrl::App("".into()),
+                tauri::WebviewUrl::App("index.html".into()),
             )
             .title("Sticky Notes")
             .inner_size(960.0, 640.0)

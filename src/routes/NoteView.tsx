@@ -26,11 +26,11 @@ export default function NoteView(props: { noteId: string }) {
   let editorContainer!: HTMLDivElement;
   let editor: Editor | undefined;
 
-  // Debounced auto-save
-  const autoSave = debounce(async () => {
+  // Build a Note update object from current editor/signal state
+  const buildNoteUpdate = (): Note | null => {
     const current = note();
-    if (!current || !editor) return;
-    const updated: Note = {
+    if (!current || !editor) return null;
+    return {
       ...current,
       title: title(),
       content: editor.getHTML(),
@@ -39,22 +39,29 @@ export default function NoteView(props: { noteId: string }) {
       pinned: pinned(),
       updatedAt: new Date().toISOString(),
     };
+  };
+
+  // Debounced auto-save
+  const autoSave = debounce(async () => {
+    const updated = buildNoteUpdate();
+    if (!updated) return;
     try {
       const { getCurrentWindow } = await import("@tauri-apps/api/window");
       const win = getCurrentWindow();
       const pos = await win.outerPosition();
       const size = await win.outerSize();
+      const sf = await win.scaleFactor();
       updated.position = {
-        x: pos.x / await win.scaleFactor(),
-        y: pos.y / await win.scaleFactor(),
-        width: size.width / await win.scaleFactor(),
-        height: size.height / await win.scaleFactor(),
+        x: pos.x / sf,
+        y: pos.y / sf,
+        width: size.width / sf,
+        height: size.height / sf,
       };
     } catch (e) {
       console.error("Failed to save window position:", e);
     }
     try {
-      await api.writeNote(current.id, updated);
+      await api.writeNote(updated.id, updated);
       setNote(updated);
       emitNoteUpdated(updated);
     } catch (e) {
@@ -64,7 +71,6 @@ export default function NoteView(props: { noteId: string }) {
 
   // Create editor after DOM mounts
   onMount(() => {
-    console.log("[NoteView] onMount, container:", editorContainer);
     if (!editorContainer) {
       setError("Editor container not found");
       return;
@@ -74,12 +80,7 @@ export default function NoteView(props: { noteId: string }) {
       editor = new Editor({
         element: editorContainer,
         extensions: [
-          StarterKit.configure({
-            heading: false,
-            codeBlock: false,
-            blockquote: false,
-            horizontalRule: false,
-          }),
+          StarterKit,
           Underline,
           Link.configure({ openOnClick: false }),
           Image.configure({ inline: true }),
@@ -92,7 +93,6 @@ export default function NoteView(props: { noteId: string }) {
           autoSave();
         },
       });
-      console.log("[NoteView] Editor created successfully");
       setEditorReady(true);
     } catch (e) {
       console.error("[NoteView] Failed to create editor:", e);
@@ -106,10 +106,8 @@ export default function NoteView(props: { noteId: string }) {
     if (!ready) return;
 
     const id = props.noteId;
-    console.log("[NoteView] Loading note:", id);
 
     api.readNote(id).then((data) => {
-      console.log("[NoteView] Note loaded:", data.id, data.title);
       setNote(data);
       setTitle(data.title);
       setTags(data.tags);
@@ -132,19 +130,10 @@ export default function NoteView(props: { noteId: string }) {
 
   const handleClose = async () => {
     autoSave.cancel();
-    const current = note();
-    if (current && editor) {
+    const updated = buildNoteUpdate();
+    if (updated) {
       try {
-        const updated: Note = {
-          ...current,
-          title: title(),
-          content: editor.getHTML(),
-          tags: tags(),
-          color: color() as Note["color"],
-          pinned: pinned(),
-          updatedAt: new Date().toISOString(),
-        };
-        await api.writeNote(current.id, updated);
+        await api.writeNote(updated.id, updated);
         emitNoteUpdated(updated);
       } catch (e) {
         console.error("[NoteView] Failed to save on close:", e);
@@ -162,7 +151,14 @@ export default function NoteView(props: { noteId: string }) {
   const colorHex = () => getColorHex(color() as Note["color"]);
 
   return (
-    <div class="note-window h-full flex flex-col bg-white select-none">
+    <div class="note-window h-full flex flex-col bg-[#fafafa] select-none">
+      {/* Debug: always visible indicator that NoteView is mounted */}
+      <Show when={!editorReady() && !error()}>
+        <div class="bg-blue-100 text-blue-700 text-xs p-2 text-center">
+          Initializing editor…
+        </div>
+      </Show>
+
       {/* Error banner */}
       <Show when={error()}>
         <div class="bg-red-100 text-red-700 text-xs p-2 text-center">

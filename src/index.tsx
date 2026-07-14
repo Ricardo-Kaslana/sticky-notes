@@ -9,10 +9,11 @@ function App() {
   const [noteId, setNoteId] = createSignal("");
 
   createEffect(() => {
+    // Prefer the injected __NOTE_ID__ (set by Tauri initialization_script).
+    // Fall back to ?noteId= query param for dev-server compatibility.
+    const injected = (window as any).__NOTE_ID__ as string | undefined;
     const params = new URLSearchParams(window.location.search);
-    const id = params.get("noteId");
-    console.log("[App] search:", window.location.search, "noteId:", id);
-
+    const id = injected ?? params.get("noteId");
     if (id) {
       setView("note");
       setNoteId(id);
@@ -38,4 +39,7 @@ function App() {
   );
 }
 
-render(() => <App />, document.getElementById("root")!);
+const root = document.getElementById("root")!;
+root.innerHTML = "";
+render(() => <App />, root);
+(window as any).__APP_MOUNTED__ = true;
