@@ -52,6 +52,10 @@ First working desktop build. All 18 implementation tasks committed; core flow (c
 - **Image paste/drag-drop is configured in TipTap but has no UI button or paste handler exposed.**
 - **`tailwind.config.ts` is referenced in the original plan but does not exist** — Tailwind v4 with `@tailwindcss/vite` does not need one.
 
+### Fixed during build verification (post-release-build, 2026-07-14)
+
+- Removed dead-code Rust palette (`pub const COLORS` and `pub fn get_color_hex` in `src-tauri/src/models.rs`). The Rust palette was unused (no `commands/*.rs` referenced it) and was incomplete relative to the frontend (missing the `name` field that the UI needs). `src/lib/types.ts` `COLORS` + `getColorHex` is now the single source of truth. Two tests that only exercised the dead function were removed; the four remaining tests cover `Note` defaults / serialization / camelCase and `Settings` defaults. Build now finishes with zero warnings.
+
 ### Fixed during integration (post-Task-18)
 
 | Commit | Fix |

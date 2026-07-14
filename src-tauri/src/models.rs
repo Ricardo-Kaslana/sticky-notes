@@ -45,19 +45,6 @@ impl Note {
     }
 }
 
-pub const COLORS: &[(&str, &str)] = &[
-    ("paper", "#fff9c4"),
-    ("blush", "#f8bbd0"),
-    ("sky", "#b3e5fc"),
-    ("sage", "#c8e6c9"),
-    ("apricot", "#ffe0b2"),
-    ("lavender", "#d1c4e9"),
-];
-
-pub fn get_color_hex(key: &str) -> &str {
-    COLORS.iter().find(|(k, _)| *k == key).map(|(_, v)| *v).unwrap_or("#fff9c4")
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
@@ -108,17 +95,6 @@ mod tests {
         assert!(json.contains("createdAt"));
         assert!(json.contains("updatedAt"));
         assert!(!json.contains("created_at"));
-    }
-
-    #[test]
-    fn test_get_color_hex_known() {
-        assert_eq!(get_color_hex("paper"), "#fff9c4");
-        assert_eq!(get_color_hex("lavender"), "#d1c4e9");
-    }
-
-    #[test]
-    fn test_get_color_hex_unknown_defaults_to_paper() {
-        assert_eq!(get_color_hex("nonexistent"), "#fff9c4");
     }
 
     #[test]
