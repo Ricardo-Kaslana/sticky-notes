@@ -1,8 +1,9 @@
 import { Note, getColorHex } from "../lib/types";
-import { openNoteWindow, closeNoteWindow } from "../lib/invoke";
-import { deleteNoteById } from "../stores/notesStore";
+import { openNoteWindow, closeNoteWindow, writeNote } from "../lib/invoke";
+import { deleteNoteById, updateNoteLocal } from "../stores/notesStore";
 import { createSignal, Show } from "solid-js";
 import ConfirmDialog from "./ConfirmDialog";
+import ColorPicker from "./ColorPicker";
 
 interface NoteCardProps {
   note: Note;
@@ -12,6 +13,7 @@ export default function NoteCard(props: NoteCardProps) {
   const [showMenu, setShowMenu] = createSignal(false);
   const [menuPos, setMenuPos] = createSignal({ x: 0, y: 0 });
   const [showConfirm, setShowConfirm] = createSignal(false);
+  const [showColorPicker, setShowColorPicker] = createSignal(false);
 
   const handleDoubleClick = () => {
     const p = props.note.position;
@@ -28,6 +30,20 @@ export default function NoteCard(props: NoteCardProps) {
     setShowMenu(false);
     const p = props.note.position;
     openNoteWindow(props.note.id, p.x, p.y, p.width, p.height);
+  };
+
+  const handleChangeColor = (color: Note["color"]) => {
+    setShowColorPicker(false);
+    // Optimistic local update so the card flips instantly.
+    updateNoteLocal(props.note.id, { color });
+    const updated: Note = {
+      ...props.note,
+      color,
+      updatedAt: new Date().toISOString(),
+    };
+    writeNote(props.note.id, updated).catch((e) => {
+      console.error("[NoteCard] Failed to change color:", e);
+    });
   };
 
   const handleDelete = async () => {
@@ -56,6 +72,16 @@ export default function NoteCard(props: NoteCardProps) {
         {/* Pin indicator */}
         <Show when={props.note.pinned}>
           <div class="absolute top-1 right-1 text-gray-400 text-xs">📌</div>
+        </Show>
+
+        {/* Inline color picker (toggled by right-click → "Change color") */}
+        <Show when={showColorPicker()}>
+          <div class="absolute top-1 right-7 z-20">
+            <ColorPicker
+              selected={props.note.color}
+              onChange={handleChangeColor}
+            />
+          </div>
         </Show>
 
         <h3 class="font-semibold text-sm mb-1 truncate text-gray-800">
@@ -95,7 +121,10 @@ export default function NoteCard(props: NoteCardProps) {
           </button>
           <button
             class="w-full text-left px-3 py-1.5 hover:bg-gray-50 text-gray-700"
-            onClick={() => { setShowMenu(false); }}
+            onClick={() => {
+              setShowMenu(false);
+              setShowColorPicker(true);
+            }}
           >
             Change color
           </button>
