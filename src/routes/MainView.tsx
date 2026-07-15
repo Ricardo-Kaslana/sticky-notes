@@ -1,7 +1,7 @@
 import { createSignal, createEffect, createMemo, onCleanup } from "solid-js";
 import { notes, loadNotes } from "../stores/notesStore";
 import { onNoteUpdated, onNoteDeleted } from "../lib/events";
-import { openNoteWindow } from "../lib/invoke";
+import { openNoteWindow, writeNote } from "../lib/invoke";
 import Sidebar from "../components/Sidebar";
 import MasonryGrid from "../components/MasonryGrid";
 import { Note } from "../lib/types";
@@ -53,6 +53,8 @@ export default function MainView() {
     return result;
   });
 
+  const [createError, setCreateError] = createSignal<string | null>(null);
+
   const handleCreateNote = async () => {
     const id = crypto.randomUUID();
     const note: Note = {
@@ -66,27 +68,40 @@ export default function MainView() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    const { writeNote } = await import("../lib/invoke");
-    await writeNote(id, note);
-    await openNoteWindow(id, 200, 150, 320, 260);
-    await loadNotes();
+    try {
+      await writeNote(id, note);
+      await openNoteWindow(id, 200, 150, 320, 260);
+      await loadNotes();
+      setCreateError(null);
+    } catch (e) {
+      console.error("[MainView] Failed to create note:", e);
+      setCreateError(String(e));
+    }
   };
 
   return (
-    <div class="flex h-screen bg-gray-50">
-      <Sidebar
-        searchQuery={searchQuery()}
-        onSearchChange={setSearchQuery}
-        selectedTag={selectedTag()}
-        onTagSelect={(tag) => {
-          setFilterPinned(false);
-          setSelectedTag(tag);
-        }}
-        filterPinned={filterPinned()}
-        onFilterPinnedChange={setFilterPinned}
-        onCreateNote={handleCreateNote}
-      />
-      <MasonryGrid notes={filteredNotes()} />
+    <div class="flex flex-col h-screen bg-gray-50">
+      {/* Error banner */}
+      {createError() && (
+        <div class="bg-red-100 text-red-700 text-xs p-2 text-center shrink-0">
+          Failed to create note: {createError()}
+        </div>
+      )}
+      <div class="flex flex-1 min-h-0">
+        <Sidebar
+          searchQuery={searchQuery()}
+          onSearchChange={setSearchQuery}
+          selectedTag={selectedTag()}
+          onTagSelect={(tag) => {
+            setFilterPinned(false);
+            setSelectedTag(tag);
+          }}
+          filterPinned={filterPinned()}
+          onFilterPinnedChange={setFilterPinned}
+          onCreateNote={handleCreateNote}
+        />
+        <MasonryGrid notes={filteredNotes()} />
+      </div>
     </div>
   );
 }

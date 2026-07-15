@@ -53,3 +53,8 @@ export async function setNoteWindowPinned(
 ): Promise<void> {
   return invoke("set_note_window_pinned", { noteId, pinned });
 }
+
+/** Returns the note ID if current window is a note window, throws otherwise. */
+export async function getNoteId(): Promise<string> {
+  return invoke<string>("get_note_id");
+}

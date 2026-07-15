@@ -3,10 +3,23 @@ mod models;
 mod tray;
 mod windows;
 
+use std::sync::Mutex;
+use tauri::Manager;
+
+/// App-wide state shared with every window/event handler.
+#[derive(Default)]
+struct AppState {
+    /// True once the user explicitly chose Quit from the tray menu.
+    /// While this is set, the main window's CloseRequested handler must NOT
+    /// `prevent_close`, otherwise the app can never actually terminate.
+    is_exiting: Mutex<bool>,
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .manage(AppState::default())
         .setup(|app| {
             // Create main window
             let _main = tauri::WebviewWindowBuilder::new(
@@ -27,6 +40,18 @@ pub fn run() {
         .on_window_event(|window, event| {
             if window.label() == "main" {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    // Honor tray "Quit" by letting the window actually close.
+                    // Without this branch, `app.exit(0)` triggers
+                    // CloseRequested on every window and the main window's
+                    // prevent_close() blocks termination indefinitely.
+                    let is_exiting = *window
+                        .state::<AppState>()
+                        .is_exiting
+                        .lock()
+                        .unwrap();
+                    if is_exiting {
+                        return;
+                    }
                     api.prevent_close();
                     let _ = window.hide();
                 }
@@ -44,6 +69,7 @@ pub fn run() {
             windows::open_note_window,
             windows::close_note_window,
             windows::set_note_window_pinned,
+            windows::get_note_id,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

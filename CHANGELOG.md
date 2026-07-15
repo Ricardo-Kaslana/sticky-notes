@@ -67,6 +67,8 @@ First working desktop build. All 18 implementation tasks committed; core flow (c
 | `50af25e` | Use `?noteId=` query parameter instead of path routing |
 | `80ede17` | Add runtime error display in `index.html` + full-height CSS chain |
 | `59143df` | Switch note-ID delivery to Tauri `initialization_script`; tidy `NoteView` (extract `buildNoteUpdate`, restore StarterKit defaults, drop debug logs) |
+| (uncommitted) | Fix tray "Quit" being blocked by `prevent_close` on main window — added `AppState.is_exiting` flag, flipped by tray before `app.exit(0)` so the main window actually closes when the user picks Quit. Close button on the main window still hides to tray as before. |
+| (uncommitted) | Fix main-thread deadlock when creating a sticky-note window AND fix "two stacked windows" symptom when opening a note. Tray menu `new_note` and the frontend's `open_note_window` command now dispatch window creation through `tauri::async_runtime::spawn` instead of running it on the tao main thread synchronously — `WebviewWindowBuilder::build()` no longer deadlocks against itself, so tray "Quit" stays responsive and the IPC bus stays free. `create_note_window` defers `eval` / `show` / `set_focus` to the builder's `on_page_load` callback (Tauri's own webview-ready signal) instead of a 150ms blind sleep, and the previous intermediate fix that left `WebviewWindowBuilder::build()` called twice in a row — which is what produced the "two stacked windows" the user reported — has been collapsed back to a single call. The `open_note_window` command also short-circuits at entry if a window with the same label already exists. |
 
 ### Verification
 

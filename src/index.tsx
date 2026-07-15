@@ -1,45 +1,65 @@
 import { render } from "solid-js/web";
-import { createSignal, createEffect, Switch, Match } from "solid-js";
+import { createSignal, createEffect, Show } from "solid-js";
+
+import { getNoteId } from "./lib/invoke";
 import MainView from "./routes/MainView";
 import NoteView from "./routes/NoteView";
 import "./index.css";
 
-function App() {
-  const [view, setView] = createSignal<"main" | "note" | "unknown">("unknown");
-  const [noteId, setNoteId] = createSignal("");
+type Route = { view: "main" | "note"; noteId: string };
 
+function App() {
+  // Check window.__NOTE_ID__ synchronously (set by initialization_script
+  // or eval() before page scripts).
+  const injectedId = (window as any).__NOTE_ID__ as string | undefined;
+
+  const [route, setRoute] = createSignal<Route | null>(
+    injectedId ? { view: "note", noteId: injectedId } : null
+  );
+
+  let routed = false;
+
+  const doRoute = (view: "main" | "note", noteId: string) => {
+    if (routed) return;
+    routed = true;
+    setRoute({ view, noteId });
+  };
+
+  // Resolve window identity. Two sources, in order:
+  // 1. __NOTE_ID__ already checked synchronously above
+  // 2. get_note_id IPC (reads window.label() on Rust side)
   createEffect(() => {
-    // Prefer the injected __NOTE_ID__ (set by Tauri initialization_script).
-    // Fall back to ?noteId= query param for dev-server compatibility.
-    const injected = (window as any).__NOTE_ID__ as string | undefined;
-    const params = new URLSearchParams(window.location.search);
-    const id = injected ?? params.get("noteId");
-    if (id) {
-      setView("note");
-      setNoteId(id);
-    } else {
-      setView("main");
-    }
+    if (routed || route() !== null) return;
+
+    getNoteId()
+      .then((noteId) => {
+        // IPC succeeded — this is a note window with correct label
+        doRoute("note", noteId);
+      })
+      .catch(() => {
+        // IPC failed — this is the main window (or a note window with
+        // a broken label; in that rare case we fall through to MainView).
+        doRoute("main", "");
+      });
   });
 
   return (
-    <Switch>
-      <Match when={view() === "main"}>
+    <Show when={route()} fallback={null}>
+      {route()!.view === "note" ? (
+        <NoteView noteId={route()!.noteId} />
+      ) : (
         <MainView />
-      </Match>
-      <Match when={view() === "note"}>
-        <NoteView noteId={noteId()} />
-      </Match>
-      <Match when={view() === "unknown"}>
-        <div class="p-4 text-sm text-gray-500">
-          Unknown route: {window.location.pathname}
-        </div>
-      </Match>
-    </Switch>
+      )}
+    </Show>
   );
 }
 
-const root = document.getElementById("root")!;
-root.innerHTML = "";
-render(() => <App />, root);
+try {
+  const root = document.getElementById("root")!;
+  root.innerHTML = "";
+  render(() => <App />, root);
+} catch (e) {
+  console.error("Failed to render app:", e);
+  throw e;
+}
 (window as any).__APP_MOUNTED__ = true;

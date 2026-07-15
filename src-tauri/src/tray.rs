@@ -23,12 +23,39 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
             "new_note" => {
-                let id = uuid::Uuid::new_v4().to_string();
-                let note = crate::models::Note::new(id.clone());
-                let _ = crate::commands::notes::write_note(app.clone(), id.clone(), note);
-                let _ = crate::windows::create_note_window(app, &id, 200.0, 200.0, 300.0, 240.0);
+                // IMPORTANT: do NOT call create_note_window synchronously here.
+                // muda's on_menu_event runs on the tao main thread, and
+                // WebviewWindowBuilder::build() needs that same thread to
+                // dispatch window creation — synchronously calling it deadlocks
+                // the main thread and freezes every subsequent tray menu event
+                // (including "Quit") and every IPC invoke.
+                //
+                // Hand the work to the async runtime so this callback returns
+                // immediately and the main thread stays free.
+                let app_handle = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    let id = uuid::Uuid::new_v4().to_string();
+                    let note = crate::models::Note::new(id.clone());
+                    let _ = crate::commands::notes::write_note(
+                        app_handle.clone(),
+                        id.clone(),
+                        note,
+                    );
+                    let _ = crate::windows::create_note_window(
+                        &app_handle,
+                        &id,
+                        200.0,
+                        200.0,
+                        300.0,
+                        240.0,
+                    );
+                });
             }
             "quit" => {
+                // Flip the exit flag BEFORE app.exit so lib.rs's on_window_event
+                // does not prevent_close() the main window — otherwise the
+                // process keeps running even after the tray Quit click.
+                *app.state::<crate::AppState>().is_exiting.lock().unwrap() = true;
                 app.exit(0);
             }
             _ => {}

@@ -151,7 +151,9 @@ export default function NoteView(props: { noteId: string }) {
   const colorHex = () => getColorHex(color() as Note["color"]);
 
   return (
-    <div class="note-window h-full flex flex-col bg-[#fafafa] select-none">
+    <div
+      class="note-window h-full flex flex-col bg-[#fafafa] select-none"
+    >
       {/* Debug: always visible indicator that NoteView is mounted */}
       <Show when={!editorReady() && !error()}>
         <div class="bg-blue-100 text-blue-700 text-xs p-2 text-center">
@@ -166,7 +168,10 @@ export default function NoteView(props: { noteId: string }) {
         </div>
       </Show>
 
-      {/* Drag handle / header */}
+      {/* Header — drag handle. justify-between leaves a wide empty middle
+          area that serves as the window drag region. Buttons (Pin / Close /
+          color swatch) stay interactive because Tauri skips drag when the
+          mousedown target is a button. */}
       <div
         class="flex items-center justify-between px-4 pt-3 pb-1"
         data-tauri-drag-region
