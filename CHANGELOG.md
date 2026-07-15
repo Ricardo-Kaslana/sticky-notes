@@ -6,6 +6,25 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/), 
 
 ---
 
+## [0.1.1] — 2026-07-15
+
+### Fixed
+
+- **窗口路由错误（主窗口变成便签视图）**：`initialization_script` 在 Tauri 2 二级窗口中静默失败。改用 `on_page_load` + `eval()` 注入 `__NOTE_ID__`，并以 `get_note_id` IPC 命令（读取 `window.label()`）作为前端唯一路由机制。移除了会导致主窗口路被错误覆盖的 `"note-id"` 事件回退监听器。
+- **便签窗口无法拖拽**：两个原因 —
+  1. `capabilities/default.json` 缺少 `core:window:allow-start-dragging` 权限，`data-tauri-drag-region` 底层调用被拒绝；
+  2. 调试用的 canary `<div>`（`position:fixed; z-index:99999`）覆盖了窗口顶部拖拽区域，拦截了所有鼠标事件。
+- **托盘 Quit 被阻止**：添加 `AppState.is_exiting` 标志，托盘 Quit 时先设置该标志，`on_window_event` 检测到后不再 `prevent_close()`，允许应用正常退出。
+- **托盘创建便签时主线程死锁**：`new_note` 菜单事件改为通过 `tauri::async_runtime::spawn` 异步执行，避免在 tao 主线程同步调用 `WebviewWindowBuilder::build()` 导致的死锁。
+
+### Changed
+
+- **移除调试条**：删除 `index.html` 中的 canary `<div>` 及 `index.tsx`、`NoteView.tsx` 中所有 `canary()` 调用。
+- **拖拽区域**：`data-tauri-drag-region` 从外层 `<div>` 移回头部 `<div>`，利用 `justify-between` 在按钮之间留出的空白区域作为拖拽手柄。
+- **MainView 新增错误提示**：创建便签失败时在顶部显示红色错误横幅。
+
+---
+
 ## [0.1.0] — 2026-06-06
 
 First working desktop build. All 18 implementation tasks committed; core flow (create → edit → save → close → reopen) verified manually on Windows.
