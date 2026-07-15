@@ -1,4 +1,3 @@
-use std::fs;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
 pub fn create_note_window(
@@ -10,41 +9,19 @@ pub fn create_note_window(
     height: f64,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let label = format!("note-{}", note_id);
-    let log_path = app
-        .path()
-        .app_data_dir()
-        .ok()
-        .map(|p| p.join("tauri_debug.log"));
-
-    let log = |msg: &str| {
-        let line = format!("[windows {}] {}\n", label, msg);
-        if let Some(ref p) = log_path {
-            let _ = fs::write(p, &line);
-        }
-        eprintln!("[windows] {}", msg);
-    };
-
-    log(&format!("create_note_window: pos=({},{}), size=({}x{})", x, y, width, height));
 
     if let Some(window) = app.get_webview_window(&label) {
-        log("already exists, focusing");
         window.set_focus()?;
         return Ok(());
     }
 
-    // NOTE: initialization_script silently fails in Tauri 2 secondary windows.
-    // We inject __NOTE_ID__ via eval() in the webview's on_page_load callback
-    // instead, which fires after the page actually finishes loading.
-    log("calling build()...");
-
-    // Defer eval / show / focus to the webview's on_page_load callback. Doing
-    // them right after build() races the webview initialization — eval() on a
-    // not-yet-ready webview silently drops the script in Tauri 2, and a blind
-    // sleep is both fragile and the cause of the "two windows" symptom the
-    // user reported (a hidden-but-already-existing window plus the post-sleep
-    // shown window looked like two stacked windows). on_page_load fires once
-    // the page has actually finished loading, which is the earliest reliable
-    // moment to inject the note ID and reveal the window.
+    // Defer eval / show / focus to the webview's on_page_load callback.
+    // Doing them right after build() races the webview initialization —
+    // eval() on a not-yet-ready webview silently drops the script in
+    // Tauri 2, and a blind sleep is both fragile and was the cause of
+    // the "two windows" symptom the user reported. on_page_load fires
+    // once the page has actually finished loading, which is the earliest
+    // reliable moment to inject the note ID and reveal the window.
     let app_handle = app.clone();
     let label_for_cb = label.clone();
     let note_id_owned = note_id.to_string();
@@ -76,18 +53,9 @@ pub fn create_note_window(
                 eprintln!("[windows] {} set_focus FAILED: {}", label_for_cb, e);
             }
         })
-        .build();
+        .build()?;
 
-    match win {
-        Ok(w) => {
-            log(&format!("build() OK, finalize on page-load; url={:?}", w.url()));
-        }
-        Err(e) => {
-            log(&format!("build() FAILED: {}", e));
-            return Err(e.into());
-        }
-    }
-
+    let _ = win; // result consumed by the `?` above; keep the binding for clarity
     Ok(())
 }
 
