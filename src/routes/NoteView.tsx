@@ -5,7 +5,8 @@ import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
-import type { Note } from "../lib/types";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import type { Note, ColorKey } from "../lib/types";
 import * as api from "../lib/invoke";
 import { emitNoteUpdated } from "../lib/events";
 import { COLORS, getColorHex } from "../lib/types";
@@ -17,7 +18,7 @@ export default function NoteView(props: { noteId: string }) {
   const [note, setNote] = createSignal<Note | null>(null);
   const [title, setTitle] = createSignal("");
   const [tags, setTags] = createSignal<string[]>([]);
-  const [color, setColor] = createSignal("paper");
+  const [color, setColor] = createSignal<ColorKey>("paper");
   const [pinned, setPinned] = createSignal(false);
   const [showColorPicker, setShowColorPicker] = createSignal(false);
   const [editorReady, setEditorReady] = createSignal(false);
@@ -35,7 +36,7 @@ export default function NoteView(props: { noteId: string }) {
       title: title(),
       content: editor.getHTML(),
       tags: tags(),
-      color: color() as Note["color"],
+      color: color(),
       pinned: pinned(),
       updatedAt: new Date().toISOString(),
     };
@@ -46,23 +47,23 @@ export default function NoteView(props: { noteId: string }) {
     const updated = buildNoteUpdate();
     if (!updated) return;
     try {
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
       const win = getCurrentWindow();
       const pos = await win.outerPosition();
       const size = await win.outerSize();
       const sf = await win.scaleFactor();
-      updated.position = {
-        x: pos.x / sf,
-        y: pos.y / sf,
-        width: size.width / sf,
-        height: size.height / sf,
-      };
+      if (sf > 0) {
+        updated.position = {
+          x: pos.x / sf,
+          y: pos.y / sf,
+          width: size.width / sf,
+          height: size.height / sf,
+        };
+      }
     } catch (e) {
       console.error("Failed to save window position:", e);
     }
     try {
       await api.writeNote(updated.id, updated);
-      setNote(updated);
       emitNoteUpdated(updated);
     } catch (e) {
       console.error("Failed to save note:", e);
@@ -122,14 +123,18 @@ export default function NoteView(props: { noteId: string }) {
     });
   });
 
-  // Cleanup on unmount
+  // Cleanup on unmount — flush any pending save so a quit/close that
+  // races a debounce does not drop the user's last edits.
   onCleanup(() => {
-    autoSave.cancel();
+    try {
+      autoSave.flush();
+    } catch (e) {
+      console.error("[NoteView] flush on cleanup failed:", e);
+    }
     editor?.destroy();
   });
 
   const handleClose = async () => {
-    autoSave.cancel();
     const updated = buildNoteUpdate();
     if (updated) {
       try {
@@ -139,6 +144,8 @@ export default function NoteView(props: { noteId: string }) {
         console.error("[NoteView] Failed to save on close:", e);
       }
     }
+    // Drop any debounced save — we just flushed the latest snapshot.
+    autoSave.cancel();
     await api.closeNoteWindow(props.noteId);
   };
 
@@ -148,13 +155,13 @@ export default function NoteView(props: { noteId: string }) {
     await api.setNoteWindowPinned(props.noteId, newPinned);
   };
 
-  const colorHex = () => getColorHex(color() as Note["color"]);
+  const colorHex = () => getColorHex(color());
 
   return (
     <div
       class="note-window h-full flex flex-col bg-[#fafafa] select-none"
     >
-      {/* Debug: always visible indicator that NoteView is mounted */}
+      {/* Loading indicator while editor initializes */}
       <Show when={!editorReady() && !error()}>
         <div class="bg-blue-100 text-blue-700 text-xs p-2 text-center">
           Initializing editor…
