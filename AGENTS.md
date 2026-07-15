@@ -84,12 +84,12 @@ Read [README.md](./README.md) for the onboarding tour and [docs/superpowers/spec
 
 ## Known gaps (do not silently "fix")
 
-These are tracked in [CHANGELOG.md](./CHANGELOG.md) under v0.1.0:
+These are tracked in [CHANGELOG.md](./CHANGELOG.md) — the entries marked *(v0.1.2)* are resolved, the rest remain open:
 
 - `stores/settingsStore.ts` is **planned but never created**. `readSettings()` / `writeSettings()` work via `invoke.ts` but no UI consumes them.
-- `src/App.tsx` is `return null`. Routing lives in `src/index.tsx`. Don't "restore" `App.tsx` without deciding whether to consolidate or split.
-- `src/components/ColorPicker.tsx` exists but is **not imported anywhere** — the floating window inlines its own color row.
-- `NoteCard.tsx` right-click → "Change color" is a **no-op**. Color is changed in the floating window only.
+- `src/App.tsx` is **deleted** (v0.1.2). Routing lives in `src/index.tsx`. No consolidation planned for v0.2.
+- `src/components/ColorPicker.tsx` is **wired up** in `NoteCard` right-click "Change color" menu (v0.1.2).
+- `NoteCard.tsx` right-click "Change color" **works** (v0.1.2). The floating window still has its own color row.
 - `tailwind.config.ts` is referenced in the original plan but **does not exist** — Tailwind v4 with `@tailwindcss/vite` doesn't need one.
 - Image paste/drag-drop is configured in TipTap (`Image.configure({ inline: true })`) but has **no UI button or paste handler** exposed.
 
@@ -118,3 +118,4 @@ If you change any of these, update both code and CHANGELOG.md.
 - **One-off debugging wisdom** — the commit message is a better home.
 
 If a future AI session is about to make the same mistake twice, write it here. Otherwise, don't.
+

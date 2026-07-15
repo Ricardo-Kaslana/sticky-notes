@@ -6,6 +6,44 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/), 
 
 ---
 
+## [0.1.2] — 2026-07-15
+
+Cleanup + bugfix sweep driven by the 2026-07-15 codebase review. No new
+features; no spec changes. Every fix lands as its own commit and is
+independently revertable.
+
+### Fixed
+
+- **退出路径丢失未防抖的编辑**：`debounce()` 新增 `flush()`，`NoteView.onCleanup` 在 webview 销毁前同步 flush 待保存的快照。覆盖托盘 Quit、OS 关闭、关窗后 2 秒内输入丢失这三种场景。
+- **`save_attachment` 路径穿越**：`safe_filename()` 拒绝空名、`..`、含路径分隔符的输入，同时给 `delete_attachment` 加同一守卫。25 MB 大小上限防止巨型粘贴占满磁盘。
+- **`list_notes` 单文件失败拖垮整个列表**：坏 JSON 现在写入 stderr 警告并跳过，文件留在磁盘上待手动恢复，其它便签正常显示。
+- **`scaleFactor()` 返回 0 防御**：`NoteView` 仅当 `sf > 0` 时才写入 `note.position`，避免 NaN/Infinity 污染持久化数据。
+- **`MainView` 监听器异步注册泄漏**：把 `onNoteUpdated/onNoteDeleted` 的 `listen()` 包装进 `async onMount`，`unlisten` 句柄先于 `onCleanup` 拿到，监听不再泄漏。
+
+### Changed
+
+- **接上 `ColorPicker`**：`NoteCard` 右键菜单的 "Change color" 不再是 no-op —— 选用现有组件实现乐观更新 + `writeNote` 持久化。
+- **`NoteView` 的 `color` 信号收紧为 `<ColorKey>`**，去掉两处 `as Note["color"]` 断言。
+- **`NoteToolbar` 按钮运行期 guard**：每个 onClick 通过 `run()` 助手守卫 `editor`，处理 editor 被销毁后的残留点击事件。
+- **`getAllTags()` 显示最常见的大小写**：`Sidebar` 现在显示 `{ name, displayName, count }` 中的 `displayName`（出现频次最高的写法），存储仍保留原始大小写，去重仍大小写不敏感。
+- **新建便签位置统一**：前端 `DEFAULT_NOTE_POSITION`（100, 100, 300, 240）来自 `lib/types.ts`，`MainView` 与 `tray.rs`（以常量镜像）共用同一组坐标，替代原本三处不一致的硬编码。
+- **空状态文案区分**：`MasonryGrid` 通过 `hasAnyNotes` prop 区分"无便签"与"当前过滤无匹配"，搜索/过滤时不再误导用户去新建便签。
+
+### Removed
+
+- `src/App.tsx`（`return null` 占位）
+- `src/components/ContextMenu.tsx` 与 `useContextMenu` hook
+- `notesStore.getNoteById`（无调用方）
+- `windows.rs` 的 `log_path` 调试写入（`fs::write` 覆盖式，每次只留最后一行；`on_page_load` 错误路径的 `eprintln!` 保留为 stderr breadcrumb）
+- `lib.rs` 中 `delete_attachment` 的 `invoke_handler!` 注册（前端尚无入口；Rust 函数保留 + `#[allow(dead_code)]`，供即将到来的图片粘贴 UI 使用）
+
+### Tests
+
+- `safe_filename` 4 个新单元测试（正常名、穿越、路径分隔符、空/点）
+- 全部 Rust 测试 9/9 通过；`tsc --noEmit` 干净；`cargo check` 无 warning
+
+---
+
 ## [0.1.1] — 2026-07-15
 
 ### Fixed
@@ -62,12 +100,12 @@ First working desktop build. All 18 implementation tasks committed; core flow (c
 - Window position + size captured at save time (`outerPosition` / `outerSize` ÷ `scaleFactor`)
 - `index.html` runtime safety net: `window.onerror`, resource-load errors, `unhandledrejection`, 20-second mount timeout. Broken bundle shows an in-DOM error panel instead of a blank window.
 
-### Known gaps (intentional)
+### Known gaps (intentional, as of v0.1.0)
 
 - **`stores/settingsStore.ts` is planned but never created.** `readSettings()` / `writeSettings()` work via `invoke.ts` but no UI consumes them.
-- **`src/App.tsx` is a `return null` placeholder.** Routing lives in `src/index.tsx` instead.
-- **`src/components/ColorPicker.tsx` exists but is not imported anywhere** — the floating window inlines its own color row.
-- **`NoteCard.tsx` right-click → "Change color" is a no-op.** Color must be changed in the floating window.
+- **`src/App.tsx` is a `return null` placeholder.** Routing lives in `src/index.tsx` instead. *Resolved in v0.1.2.*
+- **`src/components/ColorPicker.tsx` exists but is not imported anywhere** — the floating window inlines its own color row. *Resolved in v0.1.2.*
+- **`NoteCard.tsx` right-click → "Change color" is a no-op.** Color must be changed in the floating window. *Resolved in v0.1.2.*
 - **Image paste/drag-drop is configured in TipTap but has no UI button or paste handler exposed.**
 - **`tailwind.config.ts` is referenced in the original plan but does not exist** — Tailwind v4 with `@tailwindcss/vite` does not need one.
 
