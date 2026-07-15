@@ -36,3 +36,6 @@ src-tauri/target/
 # codegraph
 .codegraph
 
+# Omo
+.omo/
+
