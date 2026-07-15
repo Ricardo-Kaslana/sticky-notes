@@ -35,7 +35,7 @@ export function updateNoteLocal(id: string, patch: Partial<Note>): void {
   );
 }
 
-export function getAllTags(): {
+export function getAllTags(notes: Note[]): {
   name: string;
   displayName: string;
   count: number;

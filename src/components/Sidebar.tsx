@@ -12,7 +12,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar(props: SidebarProps) {
-  const tags = createMemo(() => getAllTags());
+  const tags = createMemo(() => getAllTags(notes));
 
   return (
     <div class="w-52 bg-white border-r border-gray-200 flex flex-col h-full shrink-0">
