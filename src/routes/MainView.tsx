@@ -2,6 +2,7 @@ import { createSignal, createMemo, onMount, onCleanup } from "solid-js";
 import { notes, loadNotes } from "../stores/notesStore";
 import { onNoteUpdated, onNoteDeleted } from "../lib/events";
 import { openNoteWindow, writeNote } from "../lib/invoke";
+import { filterNotes } from "../lib/filterNotes";
 import Sidebar from "../components/Sidebar";
 import MasonryGrid from "../components/MasonryGrid";
 import { DEFAULT_NOTE_POSITION, Note } from "../lib/types";
@@ -33,30 +34,13 @@ export default function MainView() {
     }
   });
 
-  const filteredNotes = createMemo(() => {
-    let result = notes;
-    const q = searchQuery().toLowerCase();
-    const tag = selectedTag().toLowerCase();
-
-    if (q) {
-      result = result.filter((n) => {
-        const text = (n.title + " " + n.content).toLowerCase();
-        return text.includes(q);
-      });
-    }
-
-    if (tag) {
-      result = result.filter((n) =>
-        n.tags.some((t) => t.toLowerCase() === tag)
-      );
-    }
-
-    if (filterPinned()) {
-      result = result.filter((n) => n.pinned);
-    }
-
-    return result;
-  });
+  const filteredNotes = createMemo(() =>
+    filterNotes(notes, {
+      query: searchQuery(),
+      tag: selectedTag(),
+      pinnedOnly: filterPinned(),
+    })
+  );
 
   const [createError, setCreateError] = createSignal<string | null>(null);
 
