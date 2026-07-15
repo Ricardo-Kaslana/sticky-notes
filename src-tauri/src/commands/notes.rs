@@ -22,13 +22,36 @@ pub fn list_notes(app: AppHandle) -> Result<Vec<Note>, String> {
     let mut notes = Vec::new();
     let entries = fs::read_dir(&dir).map_err(|e| e.to_string())?;
     for entry in entries {
-        let entry = entry.map_err(|e| e.to_string())?;
+        let entry = match entry {
+            Ok(e) => e,
+            Err(e) => {
+                eprintln!("[notes] skipping unreadable dir entry: {}", e);
+                continue;
+            }
+        };
         let path = entry.path();
-        if path.extension().map(|e| e == "json").unwrap_or(false) {
-            let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
-            let note: Note = serde_json::from_str(&content).map_err(|e| e.to_string())?;
-            notes.push(note);
+        if !path.extension().map(|e| e == "json").unwrap_or(false) {
+            continue;
         }
+        let content = match fs::read_to_string(&path) {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("[notes] cannot read {}: {}", path.display(), e);
+                continue;
+            }
+        };
+        let note: Note = match serde_json::from_str(&content) {
+            Ok(n) => n,
+            Err(e) => {
+                eprintln!(
+                    "[notes] cannot parse {}: {} — file left on disk for recovery",
+                    path.display(),
+                    e
+                );
+                continue;
+            }
+        };
+        notes.push(note);
     }
     notes.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
     Ok(notes)
