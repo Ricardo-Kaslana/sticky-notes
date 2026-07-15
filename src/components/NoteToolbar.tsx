@@ -1,7 +1,10 @@
 import type { Editor } from "@tiptap/core";
+import { Image as ImageIcon } from "lucide-solid";
+import { insertImageFromBlob } from "../lib/insertImageFromBlob";
 
 interface NoteToolbarProps {
   editor: Editor | undefined | null;
+  noteId: string;
 }
 
 export default function NoteToolbar(props: NoteToolbarProps) {
@@ -18,10 +21,24 @@ export default function NoteToolbar(props: NoteToolbarProps) {
     fn(props.editor);
   };
 
+  let fileInputRef: HTMLInputElement | undefined;
+
+  const handleFileChange = (e: Event) => {
+    const input = e.currentTarget as HTMLInputElement;
+    const files = input.files;
+    if (!files || !props.editor) return;
+    for (const file of Array.from(files)) {
+      void insertImageFromBlob(props.editor, file, props.noteId);
+    }
+    // Allow re-selecting the same file later (otherwise the change event
+    // would not fire when the user picks the same path twice).
+    input.value = "";
+  };
+
   if (!props.editor) return null;
 
   return (
-    <div class="flex gap-0.5 mb-2 flex-wrap">
+    <div class="flex gap-0.5 mb-2 flex-wrap items-center">
       <button
         class={btnClass(props.editor.isActive("bold"))}
         onClick={run((e) => e.chain().focus().toggleBold().run())}
@@ -59,6 +76,22 @@ export default function NoteToolbar(props: NoteToolbarProps) {
       >
         1. List
       </button>
+      <span class="w-px bg-gray-200 mx-0.5" />
+      <button
+        class={btnClass(false)}
+        onClick={() => fileInputRef?.click()}
+        title="Insert image"
+        aria-label="Insert image"
+      >
+        <ImageIcon size={14} />
+      </button>
+      <input
+        ref={fileInputRef!}
+        type="file"
+        accept="image/*"
+        class="hidden"
+        onChange={handleFileChange}
+      />
     </div>
   );
 }

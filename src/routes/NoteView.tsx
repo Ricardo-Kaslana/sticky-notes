@@ -232,7 +232,7 @@ export default function NoteView(props: { noteId: string }) {
 
       {/* Toolbar */}
       <div class="px-4">
-        <NoteToolbar editor={editor ?? null} />
+        <NoteToolbar editor={editor ?? null} noteId={props.noteId} />
       </div>
 
       {/* Editor */}
