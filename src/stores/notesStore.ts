@@ -35,19 +35,43 @@ export function updateNoteLocal(id: string, patch: Partial<Note>): void {
   );
 }
 
-export function getNoteById(id: string): Note | undefined {
-  return notes.find((n) => n.id === id);
-}
-
-export function getAllTags(): { name: string; count: number }[] {
-  const tagMap = new Map<string, number>();
+export function getAllTags(): {
+  name: string;
+  displayName: string;
+  count: number;
+}[] {
+  const groups = new Map<
+    string,
+    { displayName: string; casings: Map<string, number> }
+  >();
   for (const note of notes) {
     for (const tag of note.tags) {
       const lower = tag.toLowerCase();
-      tagMap.set(lower, (tagMap.get(lower) ?? 0) + 1);
+      const entry = groups.get(lower) ?? {
+        displayName: tag,
+        casings: new Map<string, number>(),
+      };
+      entry.casings.set(tag, (entry.casings.get(tag) ?? 0) + 1);
+      // Pick the most-common casing as the display name. Ties keep the
+      // earlier-encountered casing because Map preserves insertion order;
+      // for ties this is arbitrary but stable across runs.
+      let topCasing = entry.displayName;
+      let topCount = entry.casings.get(topCasing) ?? 0;
+      for (const [casing, count] of entry.casings) {
+        if (count > topCount) {
+          topCasing = casing;
+          topCount = count;
+        }
+      }
+      entry.displayName = topCasing;
+      groups.set(lower, entry);
     }
   }
-  return Array.from(tagMap.entries())
-    .map(([name, count]) => ({ name, count }))
+  return Array.from(groups.entries())
+    .map(([name, { displayName, casings }]) => ({
+      name,
+      displayName,
+      count: Array.from(casings.values()).reduce((a, b) => a + b, 0),
+    }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }

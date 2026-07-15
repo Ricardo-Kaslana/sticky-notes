@@ -63,13 +63,15 @@ pub fn run() {
             commands::notes::write_note,
             commands::notes::delete_note,
             commands::attachments::save_attachment,
-            commands::attachments::delete_attachment,
             commands::settings::read_settings,
             commands::settings::write_settings,
             windows::open_note_window,
             windows::close_note_window,
             windows::set_note_window_pinned,
             windows::get_note_id,
+            // commands::attachments::delete_attachment is reserved for the
+            // upcoming image-paste UI; not exposed yet because there is no
+            // invoke wrapper and no caller.
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

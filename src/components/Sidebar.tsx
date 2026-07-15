@@ -69,7 +69,7 @@ export default function Sidebar(props: SidebarProps) {
                     props.selectedTag !== tag.name,
                 }}
               >
-                <span>{tag.name}</span>
+                <span>{tag.displayName}</span>
                 <span class="text-gray-400">{tag.count}</span>
               </button>
             )}

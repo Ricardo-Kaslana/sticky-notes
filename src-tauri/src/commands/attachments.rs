@@ -14,8 +14,8 @@ fn attachments_dir(app: &AppHandle, note_id: &str) -> Result<PathBuf, String> {
 
 /// Returns Some(safe_name) when the input is acceptable, None otherwise.
 /// Rejects empty names, names containing path separators, and any name that
-/// contains a `..` segment after normalization. This keeps `dir.join(name)`
-/// from escaping the attachments directory.
+/// contains a `..` segment. This keeps `dir.join(name)` from escaping the
+/// attachments directory.
 fn safe_filename(name: &str) -> Option<String> {
     if name.is_empty() {
         return None;
@@ -46,6 +46,11 @@ pub fn save_attachment(app: AppHandle, note_id: String, file_name: String, data:
     Ok(path.to_string_lossy().to_string())
 }
 
+/// Reserved for the upcoming image-paste UI. The function is implemented
+/// and safe (uses the same `safe_filename` guard as `save_attachment`),
+/// but the frontend has no entry point yet — `lib.rs` `invoke_handler`
+/// deliberately omits it. Keep this attribute until then.
+#[allow(dead_code)]
 #[tauri::command]
 pub fn delete_attachment(app: AppHandle, note_id: String, file_name: String) -> Result<(), String> {
     let name = safe_filename(&file_name)
