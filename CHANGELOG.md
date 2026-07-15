@@ -6,6 +6,21 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/), 
 
 ---
 
+
+## [0.1.4] — 2026-07-15
+
+### Added
+
+- **Image paste / drop / insert via toolbar** — three entry points (Ctrl+V, file drag, toolbar button) all funnel through `insertImageFromBlob`. The blob is uploaded via the existing `save_attachment` Rust command and inserted as an inline `<img>` using `convertFileSrc` to map the local path into an `asset://` URL the Tauri webview can load.
+- **`pastedFilename(mime, now?)`** — pure helper for collision-resistant image filenames (`pasted-<ISO timestamp>.<ext>`). Extracted so the timestamp logic is unit-testable.
+- **`lucide-solid`** dependency for the toolbar image button icon.
+- **Tauri `assetProtocol`** enabled, scoped to `$APPDATA/attachments/**` so the webview can only load files written by `save_attachment`, not arbitrary disk paths.
+
+### Tests
+
+- 7 new unit tests for `pastedFilename` (png/jpeg/webp/svg/unknown mime + injected Date + colon replacement).
+- 26 frontend tests total, all passing.
+
 ## [0.1.3] — 2026-07-15
 
 ### Added
@@ -146,3 +161,4 @@ First working desktop build. All 18 implementation tasks committed; core flow (c
 ### Verification
 
 The implementation plan's verification checklist has been marked up — see [docs/superpowers/plans/2026-06-06-sticky-notes.md](./docs/superpowers/plans/2026-06-06-sticky-notes.md). All 16 items pass except where noted in "Known gaps" above.
+

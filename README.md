@@ -15,6 +15,7 @@ A lightweight, high-performance, modern minimalist sticky-notes desktop app for 
 - **Auto-save** — 2-second debounced save on every keystroke; close the window, reopen, content is there
 - **Cross-window sync** — edits in a floating window refresh the management view instantly
 - **Six pastel colors** — `paper` / `blush` / `sky` / `sage` / `apricot` / `lavender`, set per-note
+- **Image paste / drop / insert via toolbar** — Ctrl+V, drag a file, or use the toolbar image button. Saved to `attachments/<uuid>/` and rendered as an inline `<img>` via `asset://`.
 - **Plain-JSON persistence** — one file per note in the OS app-data dir, easy to back up, sync, or version
 
 ---
