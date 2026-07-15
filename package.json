@@ -20,6 +20,7 @@
     "@tiptap/extension-placeholder": "^2.11.0",
     "@tiptap/extension-underline": "^2.11.0",
     "@tiptap/starter-kit": "^2.11.0",
+    "lucide-solid": "^1.24.0",
     "solid-js": "^1.9.0"
   },
   "devDependencies": {
@@ -32,4 +33,3 @@
     "vitest": "^2"
   }
 }
-
