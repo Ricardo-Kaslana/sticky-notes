@@ -44,3 +44,15 @@ export interface Settings {
   launchOnStartup: boolean;
   trayOnClose: boolean;
 }
+
+/**
+ * Default window position/size for a newly created note. Single source of
+ * truth for the frontend; mirrored as constants in src-tauri/src/tray.rs
+ * (kept in sync manually — Rust cannot import the TS module).
+ */
+export const DEFAULT_NOTE_POSITION: NotePosition = {
+  x: 100,
+  y: 100,
+  width: 300,
+  height: 240,
+};

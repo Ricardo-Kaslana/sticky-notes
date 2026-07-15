@@ -4,6 +4,7 @@ import NoteCard from "./NoteCard";
 
 interface MasonryGridProps {
   notes: Note[];
+  hasAnyNotes: boolean;
 }
 
 export default function MasonryGrid(props: MasonryGridProps) {
@@ -16,7 +17,9 @@ export default function MasonryGrid(props: MasonryGridProps) {
       </div>
       {props.notes.length === 0 && (
         <div class="flex items-center justify-center h-full text-gray-400 text-sm">
-          No notes yet — click "+ 新建便签" to create one
+          {props.hasAnyNotes
+            ? "No notes match the current filter"
+            : 'No notes yet — click "+ 新建便签" to create one'}
         </div>
       )}
     </div>
