@@ -168,18 +168,13 @@ export default function NoteView(props: { noteId: string }) {
         </div>
       </Show>
 
-      {/* Header — drag handle. justify-between leaves a wide empty middle
-          area that serves as the window drag region. Buttons (Pin / Close /
-          color swatch) stay interactive because Tauri skips drag when the
-          mousedown target is a button. */}
-      <div
-        class="flex items-center justify-between px-4 pt-3 pb-1"
-        data-tauri-drag-region
-      >
-        <div class="flex gap-1.5">
+      {/* Header — only the middle spacer is a drag region. Buttons sit outside
+          it so their click events are never consumed by a drag start. */}
+      <div class="flex items-center px-4 pt-3 pb-1">
+        <div class="flex gap-2">
           <button
             onClick={handlePinToggle}
-            class="w-3 h-3 rounded-full"
+            class="w-3.5 h-3.5 rounded-full"
             classList={{
               "bg-gray-300 hover:bg-gray-400": !pinned(),
               "bg-gray-600": pinned(),
@@ -188,10 +183,12 @@ export default function NoteView(props: { noteId: string }) {
           />
           <button
             onClick={handleClose}
-            class="w-3 h-3 rounded-full bg-red-400 hover:bg-red-500"
+            class="w-3.5 h-3.5 rounded-full bg-red-500 hover:bg-red-600 border border-red-600"
             title="Close"
           />
         </div>
+        {/* Middle spacer — the sole drag region */}
+        <div class="flex-1 self-stretch" data-tauri-drag-region />
         <button
           onClick={() => setShowColorPicker(!showColorPicker())}
           class="w-4 h-4 rounded-sm border border-gray-300"
