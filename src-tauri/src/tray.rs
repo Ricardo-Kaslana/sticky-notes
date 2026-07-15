@@ -12,8 +12,12 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
 
     let menu = Menu::with_items(app, &[&show, &new_note, &separator, &quit])?;
 
+    let tray_icon = app
+        .default_window_icon()
+        .ok_or("no default window icon found — check bundle.icon in tauri.conf.json")?
+        .clone();
     let _tray = TrayIconBuilder::new()
-        .icon(app.default_window_icon().unwrap().clone())
+        .icon(tray_icon)
         .menu(&menu)
         .on_menu_event(move |app, event| match event.id.as_ref() {
             "show" => {
@@ -36,19 +40,23 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
                 tauri::async_runtime::spawn(async move {
                     let id = uuid::Uuid::new_v4().to_string();
                     let note = crate::models::Note::new(id.clone());
-                    let _ = crate::commands::notes::write_note(
+                    if let Err(e) = crate::commands::notes::write_note(
                         app_handle.clone(),
                         id.clone(),
                         note,
-                    );
-                    let _ = crate::windows::create_note_window(
+                    ) {
+                        eprintln!("[tray] failed to write new note {}: {}", id, e);
+                    }
+                    if let Err(e) = crate::windows::create_note_window(
                         &app_handle,
                         &id,
                         200.0,
                         200.0,
                         300.0,
                         240.0,
-                    );
+                    ) {
+                        eprintln!("[tray] failed to create note window for {}: {}", id, e);
+                    }
                 });
             }
             "quit" => {

@@ -13,12 +13,14 @@ pub fn create_note_window(
     let log_path = app
         .path()
         .app_data_dir()
-        .unwrap()
-        .join("tauri_debug.log");
+        .ok()
+        .map(|p| p.join("tauri_debug.log"));
 
     let log = |msg: &str| {
         let line = format!("[windows {}] {}\n", label, msg);
-        let _ = fs::write(&log_path, &line); // overwrite with latest
+        if let Some(ref p) = log_path {
+            let _ = fs::write(p, &line);
+        }
         eprintln!("[windows] {}", msg);
     };
 

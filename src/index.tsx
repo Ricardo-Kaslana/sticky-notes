@@ -44,7 +44,14 @@ function App() {
   });
 
   return (
-    <Show when={route()} fallback={null}>
+    <Show
+      when={route()}
+      fallback={
+        <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#999;font-size:14px;">
+          Loading…
+        </div>
+      }
+    >
       {route()!.view === "note" ? (
         <NoteView noteId={route()!.noteId} />
       ) : (

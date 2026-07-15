@@ -3,13 +3,16 @@ use std::path::PathBuf;
 use tauri::AppHandle;
 use tauri::Manager;
 
-fn attachments_dir(app: &AppHandle, note_id: &str) -> PathBuf {
-    app.path().app_data_dir().unwrap().join("attachments").join(note_id)
+fn attachments_dir(app: &AppHandle, note_id: &str) -> Result<PathBuf, String> {
+    app.path()
+        .app_data_dir()
+        .map(|p| p.join("attachments").join(note_id))
+        .map_err(|e| format!("failed to resolve app data dir: {}", e))
 }
 
 #[tauri::command]
 pub fn save_attachment(app: AppHandle, note_id: String, file_name: String, data: Vec<u8>) -> Result<String, String> {
-    let dir = attachments_dir(&app, &note_id);
+    let dir = attachments_dir(&app, &note_id)?;
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let path = dir.join(&file_name);
     fs::write(&path, &data).map_err(|e| e.to_string())?;
@@ -18,7 +21,7 @@ pub fn save_attachment(app: AppHandle, note_id: String, file_name: String, data:
 
 #[tauri::command]
 pub fn delete_attachment(app: AppHandle, note_id: String, file_name: String) -> Result<(), String> {
-    let path = attachments_dir(&app, &note_id).join(&file_name);
+    let path = attachments_dir(&app, &note_id)?.join(&file_name);
     if path.exists() {
         fs::remove_file(&path).map_err(|e| e.to_string())?;
     }

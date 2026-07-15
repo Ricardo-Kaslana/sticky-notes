@@ -4,13 +4,16 @@ use tauri::AppHandle;
 use tauri::Manager;
 use crate::models::Settings;
 
-fn settings_path(app: &AppHandle) -> PathBuf {
-    app.path().app_data_dir().unwrap().join("settings.json")
+fn settings_path(app: &AppHandle) -> Result<PathBuf, String> {
+    app.path()
+        .app_data_dir()
+        .map(|p| p.join("settings.json"))
+        .map_err(|e| format!("failed to resolve app data dir: {}", e))
 }
 
 #[tauri::command]
 pub fn read_settings(app: AppHandle) -> Result<Settings, String> {
-    let path = settings_path(&app);
+    let path = settings_path(&app)?;
     if path.exists() {
         let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
         serde_json::from_str(&content).map_err(|e| e.to_string())
@@ -21,7 +24,7 @@ pub fn read_settings(app: AppHandle) -> Result<Settings, String> {
 
 #[tauri::command]
 pub fn write_settings(app: AppHandle, settings: Settings) -> Result<(), String> {
-    let path = settings_path(&app);
+    let path = settings_path(&app)?;
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }

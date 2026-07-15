@@ -3,19 +3,22 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager};
 use crate::models::Note;
 
-fn notes_dir(app: &AppHandle) -> PathBuf {
-    app.path().app_data_dir().unwrap().join("notes")
+fn notes_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    app.path()
+        .app_data_dir()
+        .map(|p| p.join("notes"))
+        .map_err(|e| format!("failed to resolve app data dir: {}", e))
 }
 
-fn ensure_notes_dir(app: &AppHandle) -> PathBuf {
-    let dir = notes_dir(app);
-    fs::create_dir_all(&dir).unwrap();
-    dir
+fn ensure_notes_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    let dir = notes_dir(app)?;
+    fs::create_dir_all(&dir).map_err(|e| format!("failed to create notes dir: {}", e))?;
+    Ok(dir)
 }
 
 #[tauri::command]
 pub fn list_notes(app: AppHandle) -> Result<Vec<Note>, String> {
-    let dir = ensure_notes_dir(&app);
+    let dir = ensure_notes_dir(&app)?;
     let mut notes = Vec::new();
     let entries = fs::read_dir(&dir).map_err(|e| e.to_string())?;
     for entry in entries {
@@ -33,7 +36,7 @@ pub fn list_notes(app: AppHandle) -> Result<Vec<Note>, String> {
 
 #[tauri::command]
 pub fn read_note(app: AppHandle, id: String) -> Result<Note, String> {
-    let dir = ensure_notes_dir(&app);
+    let dir = ensure_notes_dir(&app)?;
     let path = dir.join(format!("{}.json", id));
     let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
     serde_json::from_str(&content).map_err(|e| e.to_string())
@@ -41,7 +44,7 @@ pub fn read_note(app: AppHandle, id: String) -> Result<Note, String> {
 
 #[tauri::command]
 pub fn write_note(app: AppHandle, id: String, mut note: Note) -> Result<(), String> {
-    let dir = ensure_notes_dir(&app);
+    let dir = ensure_notes_dir(&app)?;
     note.updated_at = chrono::Utc::now().to_rfc3339();
     let path = dir.join(format!("{}.json", id));
     let json = serde_json::to_string_pretty(&note).map_err(|e| e.to_string())?;
@@ -52,7 +55,7 @@ pub fn write_note(app: AppHandle, id: String, mut note: Note) -> Result<(), Stri
 
 #[tauri::command]
 pub fn delete_note(app: AppHandle, id: String) -> Result<(), String> {
-    let dir = ensure_notes_dir(&app);
+    let dir = ensure_notes_dir(&app)?;
     let path = dir.join(format!("{}.json", id));
     if path.exists() {
         fs::remove_file(&path).map_err(|e| e.to_string())?;
