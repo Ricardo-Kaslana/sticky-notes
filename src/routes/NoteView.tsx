@@ -13,6 +13,7 @@ import { COLORS, getColorHex } from "../lib/types";
 import NoteToolbar from "../components/NoteToolbar";
 import TagInput from "../components/TagInput";
 import { debounce } from "../utils/debounce";
+import { insertImageFromBlob } from "../lib/insertImageFromBlob";
 
 export default function NoteView(props: { noteId: string }) {
   const [note, setNote] = createSignal<Note | null>(null);
@@ -89,6 +90,39 @@ export default function NoteView(props: { noteId: string }) {
         ],
         editorProps: {
           attributes: { class: "prose prose-sm max-w-none outline-none" },
+          handlePaste: (_view, event) => {
+            const items = event.clipboardData?.items;
+            if (!items) return false;
+            const blobs: Blob[] = [];
+            for (const item of Array.from(items)) {
+              if (item.kind === "file" && item.type.startsWith("image/")) {
+                const blob = item.getAsFile();
+                if (blob) blobs.push(blob);
+              }
+            }
+            if (blobs.length === 0) return false;
+            event.preventDefault();
+            if (!editor) return true;
+            for (const blob of blobs) {
+              void insertImageFromBlob(editor, blob, props.noteId);
+            }
+            return true;
+          },
+          handleDrop: (_view, event, _slice, moved) => {
+            if (moved) return false;
+            const files = event.dataTransfer?.files;
+            if (!files || files.length === 0) return false;
+            const blobs = Array.from(files).filter((f) =>
+              f.type.startsWith("image/")
+            );
+            if (blobs.length === 0) return false;
+            event.preventDefault();
+            if (!editor) return true;
+            for (const blob of blobs) {
+              void insertImageFromBlob(editor, blob, props.noteId);
+            }
+            return true;
+          },
         },
         onUpdate: () => {
           autoSave();
@@ -256,3 +290,4 @@ export default function NoteView(props: { noteId: string }) {
     </div>
   );
 }
+
