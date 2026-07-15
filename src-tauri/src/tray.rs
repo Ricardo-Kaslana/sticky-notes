@@ -4,6 +4,13 @@ use tauri::{
     AppHandle, Manager,
 };
 
+// Mirror of src/lib/types.ts DEFAULT_NOTE_POSITION. Keep in sync manually
+// when the source-of-truth constant changes.
+const NEW_NOTE_X: f64 = 100.0;
+const NEW_NOTE_Y: f64 = 100.0;
+const NEW_NOTE_W: f64 = 300.0;
+const NEW_NOTE_H: f64 = 240.0;
+
 pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let show = MenuItem::with_id(app, "show", "Show main window", true, None::<&str>)?;
     let new_note = MenuItem::with_id(app, "new_note", "New note", true, None::<&str>)?;
@@ -50,10 +57,10 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
                     if let Err(e) = crate::windows::create_note_window(
                         &app_handle,
                         &id,
-                        200.0,
-                        200.0,
-                        300.0,
-                        240.0,
+                        NEW_NOTE_X,
+                        NEW_NOTE_Y,
+                        NEW_NOTE_W,
+                        NEW_NOTE_H,
                     ) {
                         eprintln!("[tray] failed to create note window for {}: {}", id, e);
                     }
