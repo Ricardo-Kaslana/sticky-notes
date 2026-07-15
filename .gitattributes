@@ -1,0 +1,36 @@
+# Normalize line endings to LF for all text files in the repo.
+# Combined with the user-level `core.autocrlf=true`, this stops git
+# from warning "LF will be replaced by CRLF the next time Git touches
+# it" because the canonical form is now declared explicitly.
+* text=auto eol=lf
+
+# Lock files must stay LF (they are auto-generated, but pinning the
+# eol removes ambiguity if a future tool tries to touch them).
+package-lock.json text eol=lf
+Cargo.lock text eol=lf
+
+# Explicit binary declarations — `text=auto` is usually right for
+# these, but saying `binary` removes any chance of git diffing
+# random byte changes inside them.
+*.png binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+
+# Source code languages
+*.ts text eol=lf
+*.tsx text eol=lf
+*.rs text eol=lf
+*.toml text eol=lf
+*.json text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
