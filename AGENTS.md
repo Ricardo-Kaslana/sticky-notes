@@ -27,6 +27,8 @@ Read [README.md](./README.md) for the onboarding tour and [docs/superpowers/spec
 | Frontend only (Vite on :1420) | `npm run dev` |
 | Type check | `npx tsc --noEmit` |
 | Rust check | `cd src-tauri && cargo check` |
+| Frontend tests | `npm test` |
+| Frontend tests (watch) | `npm run test:watch` |
 | Rust tests | `cd src-tauri && cargo test` |
 | Release build | `npm run tauri build` |
 

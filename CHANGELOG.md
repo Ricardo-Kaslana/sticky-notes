@@ -6,6 +6,22 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/), 
 
 ---
 
+## [0.1.3] — 2026-07-15
+
+### Added
+
+- **Vitest harness** for the frontend: `npm test` runs `vitest run --passWithNoTests`, `npm run test:watch` runs in watch mode. Node environment, no DOM, no component testing this round.
+- **`filterNotes(notes, opts)`** extracted from `MainView`'s inline `createMemo` into a pure function in `src/lib/filterNotes.ts`. The inline memo now delegates to it.
+- **`getAllTags(notes)` signature change**: takes the notes array explicitly instead of reading from the module-level store. Sole caller `Sidebar` passes `notes`.
+
+### Tests
+
+- 11 unit tests for `filterNotes` (empty opts, query title/content/case/HTML-raw matching, tag case-insensitivity + empty tag, pinnedOnly on/off, combined filters, empty result).
+- 8 unit tests for `getAllTags` (empty notes, no-tag notes, single tag aggregation, case-insensitive grouping, most-common-casing displayName, tie-breaking by first-encountered, sort order, multi-tag counts).
+- 19 tests total, all passing. `tsc --noEmit` clean.
+
+---
+
 ## [0.1.2] — 2026-07-15
 
 Cleanup + bugfix sweep driven by the 2026-07-15 codebase review. No new
