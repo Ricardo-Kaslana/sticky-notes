@@ -8,6 +8,8 @@ import Sidebar from "../components/Sidebar";
 import MasonryGrid from "../components/MasonryGrid";
 import SettingsDialog from "../components/SettingsDialog";
 import { DEFAULT_NOTE_POSITION, Note } from "../lib/types";
+// Deep import: the "lucide-solid" barrel pulls ~3500 icon modules in dev.
+import AlertCircle from "lucide-solid/icons/alert-circle";
 
 export default function MainView() {
   const [searchQuery, setSearchQuery] = createSignal("");
@@ -89,10 +91,11 @@ export default function MainView() {
   };
 
   return (
-    <div class="flex flex-col h-screen bg-gray-50">
+    <div class="flex flex-col h-screen bg-surface">
       {/* Error banner */}
       {createError() && (
-        <div class="bg-red-100 text-red-700 text-xs p-2 text-center shrink-0">
+        <div class="flex items-center justify-center gap-1.5 bg-red-50 text-red-700 text-xs p-2 shrink-0 border-b border-red-100">
+          <AlertCircle size={14} />
           Failed to create note: {createError()}
         </div>
       )}
