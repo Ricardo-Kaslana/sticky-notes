@@ -6,13 +6,17 @@ import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-// Deep import: the "lucide-solid" barrel pulls ~3500 icon modules in dev.
+// Deep imports: the "lucide-solid" barrel pulls ~3500 icon modules in dev.
 import Trash2 from "lucide-solid/icons/trash-2";
+import Pin from "lucide-solid/icons/pin";
+import X from "lucide-solid/icons/x";
 import type { Note, ColorKey } from "../lib/types";
 import * as api from "../lib/invoke";
 import { onNoteUpdated, onSettingsChanged } from "../lib/events";
 import { loadSettings } from "../stores/settingsStore";
-import { COLORS, getColorHex } from "../lib/types";
+import { getColorHex, getColorDeepHex } from "../lib/types";
+import ColorSwatchRow from "../components/ColorSwatchRow";
+import { DELETE_NOTE_CONFIRM } from "../lib/uiText";
 import NoteToolbar from "../components/NoteToolbar";
 import TagInput from "../components/TagInput";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -319,28 +323,30 @@ export default function NoteView(props: { noteId: string }) {
   };
 
   const colorHex = () => getColorHex(color());
+  const deepHex = () => getColorDeepHex(color());
 
   return (
     <div
-      class="note-window h-full flex flex-col bg-[#fafafa] select-none"
+      class="note-window h-full flex flex-col select-none text-ink transition-[background-color] duration-200"
+      style={{ background: colorHex() }}
     >
       {/* Loading indicator while editor initializes */}
       <Show when={!editorReady() && !error()}>
-        <div class="bg-blue-100 text-blue-700 text-xs p-2 text-center">
+        <div class="bg-black/5 text-ink-muted text-xs px-3 py-1.5 text-center">
           编辑器初始化中…
         </div>
       </Show>
 
       {/* Error banner */}
       <Show when={error()}>
-        <div class="bg-red-100 text-red-700 text-xs p-2 text-center">
+        <div class="bg-red-50/90 text-red-700 text-xs px-3 py-1.5 text-center">
           {error()}
         </div>
       </Show>
 
       {/* Transient notice banner */}
       <Show when={notice()}>
-        <div class="bg-amber-100 text-amber-700 text-xs p-2 text-center">
+        <div class="bg-amber-50/90 text-amber-800 text-xs px-3 py-1.5 text-center">
           {notice()}
         </div>
       </Show>
@@ -352,24 +358,30 @@ export default function NoteView(props: { noteId: string }) {
         <div class="flex gap-2">
           <button
             onClick={handlePinToggle}
-            class="w-3.5 h-3.5 rounded-full"
+            class="w-3.5 h-3.5 rounded-full flex items-center justify-center transition-colors"
             classList={{
-              "bg-gray-300 hover:bg-gray-400": !pinned(),
-              "bg-gray-600": pinned(),
+              "bg-black/15 text-transparent hover:text-ink/60 hover:bg-black/20": !pinned(),
+              "bg-ink text-white": pinned(),
             }}
             title="置顶/取消置顶"
-          />
+            aria-label="置顶/取消置顶"
+          >
+            <Pin size={8} />
+          </button>
           <button
             onClick={handleClose}
-            class="w-3.5 h-3.5 rounded-full bg-red-500 hover:bg-red-600 border border-red-600"
+            class="w-3.5 h-3.5 rounded-full bg-red-500 hover:bg-red-600 text-transparent hover:text-white flex items-center justify-center transition-colors"
             title="关闭"
-          />
+            aria-label="关闭"
+          >
+            <X size={8} />
+          </button>
         </div>
         {/* Middle spacer — the sole drag region */}
         <div class="flex-1 self-stretch" data-tauri-drag-region />
         <button
           onClick={() => setShowDeleteConfirm(true)}
-          class="mr-2 text-gray-400 hover:text-red-500"
+          class="mr-1.5 p-1 rounded-sm text-ink/50 hover:text-red-600 hover:bg-black/5 transition-colors"
           title="删除便签"
           aria-label="删除便签"
         >
@@ -377,28 +389,24 @@ export default function NoteView(props: { noteId: string }) {
         </button>
         <button
           onClick={() => setShowColorPicker(!showColorPicker())}
-          class="w-4 h-4 rounded-sm border border-gray-300"
-          style={{ background: colorHex() }}
+          class="w-4 h-4 rounded-full border"
+          style={{ background: colorHex(), "border-color": deepHex() }}
           title="更换颜色"
+          aria-label="更换颜色"
         />
       </div>
 
       {/* Color picker */}
       <Show when={showColorPicker()}>
-        <div class="px-4 pb-2 flex gap-1.5">
-          {COLORS.map((c) => (
-            <button
-              onClick={() => {
-                setColor(c.key);
-                setShowColorPicker(false);
-                autoSave();
-              }}
-              class="w-5 h-5 rounded-sm border"
-              classList={{ "border-gray-900": color() === c.key, "border-gray-200": color() !== c.key }}
-              style={{ background: c.hex }}
-              title={c.name}
-            />
-          ))}
+        <div class="px-4 pb-2 animate-fade-in">
+          <ColorSwatchRow
+            selected={color()}
+            onSelect={(c) => {
+              setColor(c);
+              setShowColorPicker(false);
+              autoSave();
+            }}
+          />
         </div>
       </Show>
 
@@ -411,7 +419,7 @@ export default function NoteView(props: { noteId: string }) {
           autoSave();
         }}
         placeholder="标题"
-        class="px-4 text-lg font-semibold text-gray-800 outline-none bg-transparent placeholder-gray-300"
+        class="px-4 text-lg font-semibold text-ink outline-none bg-transparent placeholder:text-black/25"
       />
 
       {/* Toolbar */}
@@ -442,15 +450,9 @@ export default function NoteView(props: { noteId: string }) {
         />
       </div>
 
-      {/* Left color accent border */}
-      <div
-        class="absolute left-0 top-0 bottom-0 w-1"
-        style={{ background: colorHex() }}
-      />
-
       <Show when={showDeleteConfirm()}>
         <ConfirmDialog
-          message="删除这条便签？此操作无法撤销。"
+          message={DELETE_NOTE_CONFIRM}
           onConfirm={handleDelete}
           onCancel={() => setShowDeleteConfirm(false)}
         />
