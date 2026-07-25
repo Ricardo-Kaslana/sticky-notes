@@ -1,6 +1,12 @@
 import { createSignal, createEffect, onCleanup, Show } from "solid-js";
 import type { Editor } from "@tiptap/core";
-// Deep import: the "lucide-solid" barrel pulls ~3500 icon modules in dev.
+// Deep imports: the "lucide-solid" barrel pulls ~3500 icon modules in dev.
+import Bold from "lucide-solid/icons/bold";
+import Italic from "lucide-solid/icons/italic";
+import UnderlineIcon from "lucide-solid/icons/underline";
+import Strikethrough from "lucide-solid/icons/strikethrough";
+import List from "lucide-solid/icons/list";
+import ListOrdered from "lucide-solid/icons/list-ordered";
 import ImageIcon from "lucide-solid/icons/image";
 import { insertImageFromBlob } from "../lib/insertImageFromBlob";
 
@@ -28,8 +34,8 @@ export default function NoteToolbar(props: NoteToolbarProps) {
   };
 
   const btnClass = (active: boolean) =>
-    `px-1.5 py-0.5 text-xs rounded ${
-      active ? "bg-gray-200 text-gray-900" : "text-gray-500 hover:bg-gray-100"
+    `p-1 rounded-sm transition-colors ${
+      active ? "bg-black/10 text-ink" : "text-ink/50 hover:bg-black/5 hover:text-ink"
     }`;
 
   // Defensive: each onClick guards so a stale click event can't dereference
@@ -66,48 +72,60 @@ export default function NoteToolbar(props: NoteToolbarProps) {
         <button
           class={btnClass(isActive("bold"))}
           onClick={run((e) => e.chain().focus().toggleBold().run())}
+          title="加粗"
+          aria-label="加粗"
         >
-          <b>B</b>
+          <Bold size={15} />
         </button>
         <button
           class={btnClass(isActive("italic"))}
           onClick={run((e) => e.chain().focus().toggleItalic().run())}
+          title="斜体"
+          aria-label="斜体"
         >
-          <i>I</i>
+          <Italic size={15} />
         </button>
         <button
           class={btnClass(isActive("underline"))}
           onClick={run((e) => e.chain().focus().toggleUnderline().run())}
+          title="下划线"
+          aria-label="下划线"
         >
-          <u>U</u>
+          <UnderlineIcon size={15} />
         </button>
         <button
           class={btnClass(isActive("strike"))}
           onClick={run((e) => e.chain().focus().toggleStrike().run())}
+          title="删除线"
+          aria-label="删除线"
         >
-          <s>S</s>
+          <Strikethrough size={15} />
         </button>
-        <span class="w-px bg-gray-200 mx-0.5" />
+        <span class="w-px h-4 bg-black/10 mx-1" />
         <button
           class={btnClass(isActive("bulletList"))}
           onClick={run((e) => e.chain().focus().toggleBulletList().run())}
+          title="无序列表"
+          aria-label="无序列表"
         >
-          • List
+          <List size={15} />
         </button>
         <button
           class={btnClass(isActive("orderedList"))}
           onClick={run((e) => e.chain().focus().toggleOrderedList().run())}
+          title="有序列表"
+          aria-label="有序列表"
         >
-          1. List
+          <ListOrdered size={15} />
         </button>
-        <span class="w-px bg-gray-200 mx-0.5" />
+        <span class="w-px h-4 bg-black/10 mx-1" />
         <button
           class={btnClass(false)}
           onClick={() => fileInputRef?.click()}
           title="插入图片"
           aria-label="插入图片"
         >
-          <ImageIcon size={14} />
+          <ImageIcon size={15} />
         </button>
         <input
           ref={fileInputRef!}

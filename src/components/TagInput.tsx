@@ -1,4 +1,6 @@
 import { createSignal, createMemo, Show, For } from "solid-js";
+// Deep import: the "lucide-solid" barrel pulls ~3500 icon modules in dev.
+import X from "lucide-solid/icons/x";
 import { notes } from "../stores/notesStore";
 
 interface TagInputProps {
@@ -69,13 +71,14 @@ export default function TagInput(props: TagInputProps) {
       <div class="flex flex-wrap gap-1 mb-1">
         <For each={props.tags}>
           {(tag, i) => (
-            <span class="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+            <span class="inline-flex items-center gap-1 text-xs bg-black/10 text-ink-muted px-2 py-0.5 rounded-full">
               {tag}
               <button
                 onClick={() => removeTag(i())}
-                class="text-gray-400 hover:text-gray-600"
+                class="text-ink/40 hover:text-ink transition-colors"
+                aria-label={`删除标签 ${tag}`}
               >
-                ×
+                <X size={10} />
               </button>
             </span>
           )}
@@ -93,14 +96,14 @@ export default function TagInput(props: TagInputProps) {
           onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
           onKeyDown={handleKeyDown}
           placeholder="+ add tag"
-          class="text-xs text-gray-400 outline-none bg-transparent w-full"
+          class="text-xs text-ink placeholder:text-black/30 outline-none bg-transparent w-full"
         />
         <Show when={showSuggestions() && suggestions().length > 0}>
-          <div class="absolute bottom-full left-0 mb-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-36 z-50">
+          <div class="absolute bottom-full left-0 mb-1 bg-panel border border-line rounded-md shadow-pop py-1 min-w-36 z-50 animate-fade-in">
             <For each={suggestions()}>
               {(s) => (
                 <button
-                  class="w-full text-left px-3 py-1 text-xs text-gray-600 hover:bg-gray-50"
+                  class="w-full text-left px-3 py-1 text-xs text-ink hover:bg-neutral-50"
                   onMouseDown={(e) => {
                     e.preventDefault();
                     addTag(s);
