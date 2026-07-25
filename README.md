@@ -2,7 +2,7 @@
 
 A lightweight, high-performance, modern minimalist sticky-notes desktop app for Windows. Built with Tauri 2 + SolidJS + TipTap.
 
-![status](https://img.shields.io/badge/status-v0.1.0-blue)
+![status](https://img.shields.io/badge/status-v0.1.5-blue)
 ![platform](https://img.shields.io/badge/platform-Windows-lightgrey)
 
 ---
@@ -12,7 +12,8 @@ A lightweight, high-performance, modern minimalist sticky-notes desktop app for 
 - **Masonry grid management view** — sidebar search, tag filter (with live counts), pinned-only filter
 - **Borderless floating note windows** — drag from anywhere, TipTap rich text, color & tag editing, pin-on-top
 - **System tray** — left-click reveals main window; menu has Show / New note / Quit
-- **Auto-save** — 2-second debounced save on every keystroke; close the window, reopen, content is there
+- **Auto-save** — debounced save on every keystroke (interval configurable in Settings); close the window, reopen, content is there
+- **Settings** — default note color, auto-save interval, close-to-tray behavior (sidebar → 设置)
 - **Cross-window sync** — edits in a floating window refresh the management view instantly
 - **Six pastel colors** — `paper` / `blush` / `sky` / `sage` / `apricot` / `lavender`, set per-note
 - **Image paste / drop / insert via toolbar** — Ctrl+V, drag a file, or use the toolbar image button. Saved to `attachments/<uuid>/` and rendered as an inline `<img>` via `asset://`.
@@ -119,7 +120,7 @@ Notes are stored as one JSON file per note in the OS app-data dir:
 Settings live next to them as `settings.json`. Attachments are stored under `attachments/<note-uuid>/`.
 
 ### Floating window note-ID delivery
-Each floating note is its own Tauri webview window. The note ID is injected via Tauri `initialization_script` — `windows.rs` sets `window.__NOTE_ID__` on the new webview before any frontend code runs. The frontend reads it (`src/index.tsx`) and falls back to a `?noteId=` query param only for Vite dev. The URL itself stays clean (`index.html`).
+Each floating note is its own Tauri webview window. The note ID reaches the frontend through three layered mechanisms (`windows.rs` → `src/index.tsx`): an optimistic `initialization_script` setting `window.__NOTE_ID__`, an `on_page_load` `eval()` of the same, and a `get_note_id` IPC command (reads `window.label()`) as the reliable fallback. The URL itself stays clean (`index.html`).
 
 ### Cross-window sync
 - An edit in the floating window calls `write_note` (Tauri `invoke`).
@@ -131,7 +132,7 @@ Each floating note is its own Tauri webview window. The note ID is injected via 
 On every auto-save, the floating window reads `getCurrentWindow().outerPosition()` and `.outerSize()`, divides both by `scaleFactor()`, and stores the result in `note.position`. On reopen, those values are passed to `open_note_window` so the window appears exactly where the user left it.
 
 ### Main window → tray
-Closing the main window calls `prevent_close()` + `hide()` in `lib.rs`. The app stays alive in the tray with floating note windows intact. Only the tray's **Quit** menu item calls `app.exit(0)`.
+By default, closing the main window calls `prevent_close()` + `hide()` in `lib.rs` — the app stays alive in the tray with floating note windows intact, and only the tray's **Quit** menu item calls `app.exit(0)`. Turning off "close to tray" in Settings makes the close button quit the app instead.
 
 ---
 

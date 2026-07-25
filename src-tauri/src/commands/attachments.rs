@@ -2,10 +2,12 @@ use std::fs;
 use std::path::PathBuf;
 use tauri::AppHandle;
 use tauri::Manager;
+use super::validate_id;
 
 const MAX_ATTACHMENT_BYTES: usize = 25 * 1024 * 1024; // 25 MB
 
 fn attachments_dir(app: &AppHandle, note_id: &str) -> Result<PathBuf, String> {
+    validate_id(note_id)?;
     app.path()
         .app_data_dir()
         .map(|p| p.join("attachments").join(note_id))
@@ -13,44 +15,68 @@ fn attachments_dir(app: &AppHandle, note_id: &str) -> Result<PathBuf, String> {
 }
 
 /// Returns Some(safe_name) when the input is acceptable, None otherwise.
-/// Rejects empty names, names containing path separators, and any name that
-/// contains a `..` segment. This keeps `dir.join(name)` from escaping the
-/// attachments directory.
+/// Rejects empty/oversized names, path separators, `..`, control chars,
+/// Windows drive/ADS colons, reserved device names (CON, NUL, ...), and
+/// trailing dots/spaces. This keeps `dir.join(name)` from escaping the
+/// attachments directory on any platform.
 fn safe_filename(name: &str) -> Option<String> {
-    if name.is_empty() {
+    if name.is_empty() || name.len() > 128 {
         return None;
     }
-    if name.contains('/') || name.contains('\\') {
+    if name.contains(['/', '\\', ':']) {
         return None;
     }
-    if name == "." || name == ".." {
+    if name == "." || name.contains("..") {
         return None;
     }
-    if name.contains("..") {
+    if name.chars().any(|c| c.is_control()) {
+        return None;
+    }
+    if name.ends_with('.') || name.ends_with(' ') {
+        return None;
+    }
+    const RESERVED: [&str; 22] = [
+        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7",
+        "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+    ];
+    let stem = name.split('.').next().unwrap_or("");
+    if RESERVED.iter().any(|r| stem.eq_ignore_ascii_case(r)) {
         return None;
     }
     Some(name.to_string())
 }
 
 #[tauri::command]
-pub fn save_attachment(app: AppHandle, note_id: String, file_name: String, data: Vec<u8>) -> Result<String, String> {
+pub fn save_attachment(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<String, String> {
+    let tauri::ipc::InvokeBody::Raw(data) = request.body() else {
+        return Err("expected raw request body".into());
+    };
     if data.len() > MAX_ATTACHMENT_BYTES {
         return Err(format!("attachment too large: {} bytes", data.len()));
     }
+    let header = |key: &str| -> Result<String, String> {
+        let v = request
+            .headers()
+            .get(key)
+            .ok_or_else(|| format!("missing header: {}", key))?
+            .to_str()
+            .map_err(|e| e.to_string())?;
+        percent_encoding::percent_decode_str(v)
+            .decode_utf8()
+            .map(|s| s.to_string())
+            .map_err(|e| e.to_string())
+    };
+    let note_id = header("x-note-id")?;
+    let file_name = header("x-file-name")?;
     let name = safe_filename(&file_name)
         .ok_or_else(|| format!("invalid attachment name: {}", file_name))?;
     let dir = attachments_dir(&app, &note_id)?;
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let path = dir.join(&name);
-    fs::write(&path, &data).map_err(|e| e.to_string())?;
+    fs::write(&path, data).map_err(|e| e.to_string())?;
     Ok(path.to_string_lossy().to_string())
 }
 
-/// Reserved for the upcoming image-paste UI. The function is implemented
-/// and safe (uses the same `safe_filename` guard as `save_attachment`),
-/// but the frontend has no entry point yet — `lib.rs` `invoke_handler`
-/// deliberately omits it. Keep this attribute until then.
-#[allow(dead_code)]
 #[tauri::command]
 pub fn delete_attachment(app: AppHandle, note_id: String, file_name: String) -> Result<(), String> {
     let name = safe_filename(&file_name)
@@ -94,5 +120,18 @@ mod tests {
     fn safe_filename_rejects_empty_and_dot() {
         assert_eq!(safe_filename(""), None);
         assert_eq!(safe_filename("."), None);
+    }
+
+    #[test]
+    fn safe_filename_rejects_windows_specific_tricks() {
+        assert_eq!(safe_filename("C:evil.txt"), None); // drive-relative path
+        assert_eq!(safe_filename("file.txt:stream"), None); // NTFS ADS
+        assert_eq!(safe_filename("CON"), None);
+        assert_eq!(safe_filename("con.png"), None);
+        assert_eq!(safe_filename("LPT1.jpg"), None);
+        assert_eq!(safe_filename("trailing."), None);
+        assert_eq!(safe_filename("trailing "), None);
+        assert_eq!(safe_filename("a\u{0}b"), None);
+        assert_eq!(safe_filename(&"a".repeat(129)), None);
     }
 }

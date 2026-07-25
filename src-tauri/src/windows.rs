@@ -1,5 +1,11 @@
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
+/// WebView2 requires every webview sharing the user-data dir to be created
+/// with identical browser arguments — a mismatch makes creation fail. Keep
+/// this single constant applied to EVERY window builder.
+pub const BROWSER_ARGS: &str =
+    "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --no-proxy-server";
+
 pub fn create_note_window(
     app: &AppHandle,
     note_id: &str,
@@ -25,6 +31,12 @@ pub fn create_note_window(
     let app_handle = app.clone();
     let label_for_cb = label.clone();
     let note_id_owned = note_id.to_string();
+    // Optimistic sync path: if the init script runs (it has been observed to
+    // silently fail on secondary windows in some Tauri 2 versions), the
+    // frontend routes without waiting for the get_note_id IPC round trip.
+    // The on_page_load eval + IPC below remain as the reliable fallback.
+    // note_id passed validate_id (alnum + '-'), safe to embed.
+    let init_script = format!("window.__NOTE_ID__ = '{}';", note_id);
     let win = WebviewWindowBuilder::new(app, &label, WebviewUrl::App("index.html".into()))
         .title("")
         .inner_size(width, height)
@@ -34,6 +46,8 @@ pub fn create_note_window(
         .skip_taskbar(true)
         .visible(false)
         .focused(true)
+        .additional_browser_args(BROWSER_ARGS)
+        .initialization_script(&init_script)
         .on_page_load(move |_webview, payload| {
             if payload.event() != tauri::webview::PageLoadEvent::Finished {
                 return;
@@ -68,6 +82,7 @@ pub fn open_note_window(
     width: f64,
     height: f64,
 ) -> Result<(), String> {
+    crate::commands::validate_id(&note_id)?;
     let label = format!("note-{}", note_id);
 
     // Idempotent entry check: if a window with this label already exists,
@@ -88,7 +103,9 @@ pub fn open_note_window(
     // return Err on a duplicate label — surfaced as a logged failure rather
     // than a second OS-level window.
     tauri::async_runtime::spawn(async move {
-        let _ = create_note_window(&app, &note_id, x, y, width, height);
+        if let Err(e) = create_note_window(&app, &note_id, x, y, width, height) {
+            eprintln!("[windows] failed to create note window {}: {}", note_id, e);
+        }
     });
     Ok(())
 }

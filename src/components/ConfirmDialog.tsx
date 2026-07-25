@@ -16,13 +16,13 @@ export default function ConfirmDialog(props: ConfirmDialogProps) {
             onClick={props.onCancel}
             class="px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            {props.cancelLabel ?? "Cancel"}
+            {props.cancelLabel ?? "取消"}
           </button>
           <button
             onClick={props.onConfirm}
             class="px-4 py-1.5 text-sm bg-red-600 text-white hover:bg-red-700 rounded-lg transition-colors"
           >
-            {props.confirmLabel ?? "Delete"}
+            {props.confirmLabel ?? "删除"}
           </button>
         </div>
       </div>

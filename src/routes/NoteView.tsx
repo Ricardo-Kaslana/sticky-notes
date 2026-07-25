@@ -6,12 +6,15 @@ import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+// Deep import: the "lucide-solid" barrel pulls ~3500 icon modules in dev.
+import Trash2 from "lucide-solid/icons/trash-2";
 import type { Note, ColorKey } from "../lib/types";
 import * as api from "../lib/invoke";
 import { emitNoteUpdated } from "../lib/events";
 import { COLORS, getColorHex } from "../lib/types";
 import NoteToolbar from "../components/NoteToolbar";
 import TagInput from "../components/TagInput";
+import ConfirmDialog from "../components/ConfirmDialog";
 import { debounce } from "../utils/debounce";
 import { insertImageFromBlob } from "../lib/insertImageFromBlob";
 
@@ -22,6 +25,7 @@ export default function NoteView(props: { noteId: string }) {
   const [color, setColor] = createSignal<ColorKey>("paper");
   const [pinned, setPinned] = createSignal(false);
   const [showColorPicker, setShowColorPicker] = createSignal(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = createSignal(false);
   const [editorReady, setEditorReady] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
 
@@ -43,15 +47,17 @@ export default function NoteView(props: { noteId: string }) {
     };
   };
 
-  // Debounced auto-save
-  const autoSave = debounce(async () => {
+  // Save the full current state (including window rect) immediately.
+  const saveNow = async () => {
     const updated = buildNoteUpdate();
     if (!updated) return;
     try {
       const win = getCurrentWindow();
-      const pos = await win.outerPosition();
-      const size = await win.outerSize();
-      const sf = await win.scaleFactor();
+      const [pos, size, sf] = await Promise.all([
+        win.outerPosition(),
+        win.outerSize(),
+        win.scaleFactor(),
+      ]);
       if (sf > 0) {
         updated.position = {
           x: pos.x / sf,
@@ -61,7 +67,7 @@ export default function NoteView(props: { noteId: string }) {
         };
       }
     } catch (e) {
-      console.error("Failed to save window position:", e);
+      console.error("Failed to capture window position:", e);
     }
     try {
       await api.writeNote(updated.id, updated);
@@ -69,7 +75,20 @@ export default function NoteView(props: { noteId: string }) {
     } catch (e) {
       console.error("Failed to save note:", e);
     }
-  }, 2000);
+  };
+
+  // Debounced auto-save. Interval is re-created from settings once loaded.
+  let autoSave = debounce(saveNow, 2000);
+  onMount(() => {
+    api
+      .readSettings()
+      .then((s) => {
+        if (s.autoSaveIntervalMs >= 500) {
+          autoSave = debounce(saveNow, s.autoSaveIntervalMs);
+        }
+      })
+      .catch((e) => console.error("[NoteView] failed to read settings:", e));
+  });
 
   // Create editor after DOM mounts
   onMount(() => {
@@ -135,14 +154,14 @@ export default function NoteView(props: { noteId: string }) {
     }
   });
 
-  // Load note data after editor is ready
+  // Load note data: fetch starts immediately (parallel with editor
+  // creation); applying it waits for the editor to be ready.
+  const noteFetch = api.readNote(props.noteId);
   createEffect(() => {
     const ready = editorReady();
     if (!ready) return;
 
-    const id = props.noteId;
-
-    api.readNote(id).then((data) => {
+    noteFetch.then((data) => {
       setNote(data);
       setTitle(data.title);
       setTags(data.tags);
@@ -169,24 +188,40 @@ export default function NoteView(props: { noteId: string }) {
   });
 
   const handleClose = async () => {
-    const updated = buildNoteUpdate();
-    if (updated) {
-      try {
-        await api.writeNote(updated.id, updated);
-        emitNoteUpdated(updated);
-      } catch (e) {
-        console.error("[NoteView] Failed to save on close:", e);
-      }
-    }
-    // Drop any debounced save — we just flushed the latest snapshot.
+    // Drop any pending debounced save — saveNow() below writes the latest
+    // snapshot including the final window position.
     autoSave.cancel();
+    try {
+      await saveNow();
+    } catch (e) {
+      console.error("[NoteView] Failed to save on close:", e);
+    }
     await api.closeNoteWindow(props.noteId);
   };
 
   const handlePinToggle = async () => {
     const newPinned = !pinned();
     setPinned(newPinned);
-    await api.setNoteWindowPinned(props.noteId, newPinned);
+    try {
+      await api.setNoteWindowPinned(props.noteId, newPinned);
+      autoSave();
+    } catch (e) {
+      console.error("[NoteView] Failed to toggle pin:", e);
+      setPinned(!newPinned);
+    }
+  };
+
+  const handleDelete = async () => {
+    setShowDeleteConfirm(false);
+    // A pending debounced save would re-create the file after deletion.
+    autoSave.cancel();
+    try {
+      await api.deleteNote(props.noteId);
+    } catch (e) {
+      console.error("[NoteView] Failed to delete note:", e);
+      return;
+    }
+    await api.closeNoteWindow(props.noteId);
   };
 
   const colorHex = () => getColorHex(color());
@@ -198,7 +233,7 @@ export default function NoteView(props: { noteId: string }) {
       {/* Loading indicator while editor initializes */}
       <Show when={!editorReady() && !error()}>
         <div class="bg-blue-100 text-blue-700 text-xs p-2 text-center">
-          Initializing editor…
+          编辑器初始化中…
         </div>
       </Show>
 
@@ -220,20 +255,29 @@ export default function NoteView(props: { noteId: string }) {
               "bg-gray-300 hover:bg-gray-400": !pinned(),
               "bg-gray-600": pinned(),
             }}
-            title="Pin / unpin"
+            title="置顶/取消置顶"
           />
           <button
             onClick={handleClose}
             class="w-3.5 h-3.5 rounded-full bg-red-500 hover:bg-red-600 border border-red-600"
-            title="Close"
+            title="关闭"
           />
         </div>
         {/* Middle spacer — the sole drag region */}
         <div class="flex-1 self-stretch" data-tauri-drag-region />
         <button
+          onClick={() => setShowDeleteConfirm(true)}
+          class="mr-2 text-gray-400 hover:text-red-500"
+          title="删除便签"
+          aria-label="删除便签"
+        >
+          <Trash2 size={14} />
+        </button>
+        <button
           onClick={() => setShowColorPicker(!showColorPicker())}
           class="w-4 h-4 rounded-sm border border-gray-300"
           style={{ background: colorHex() }}
+          title="更换颜色"
         />
       </div>
 
@@ -245,6 +289,7 @@ export default function NoteView(props: { noteId: string }) {
               onClick={() => {
                 setColor(c.key);
                 setShowColorPicker(false);
+                autoSave();
               }}
               class="w-5 h-5 rounded-sm border"
               classList={{ "border-gray-900": color() === c.key, "border-gray-200": color() !== c.key }}
@@ -259,14 +304,17 @@ export default function NoteView(props: { noteId: string }) {
       <input
         type="text"
         value={title()}
-        onInput={(e) => setTitle(e.currentTarget.value)}
-        placeholder="Title"
+        onInput={(e) => {
+          setTitle(e.currentTarget.value);
+          autoSave();
+        }}
+        placeholder="标题"
         class="px-4 text-lg font-semibold text-gray-800 outline-none bg-transparent placeholder-gray-300"
       />
 
       {/* Toolbar */}
       <div class="px-4">
-        <NoteToolbar editor={editor ?? null} noteId={props.noteId} />
+        <NoteToolbar editor={editorReady() ? editor ?? null : null} noteId={props.noteId} />
       </div>
 
       {/* Editor */}
@@ -279,7 +327,13 @@ export default function NoteView(props: { noteId: string }) {
 
       {/* Tags */}
       <div class="px-4 pb-3">
-        <TagInput tags={tags()} onChange={setTags} />
+        <TagInput
+          tags={tags()}
+          onChange={(t) => {
+            setTags(t);
+            autoSave();
+          }}
+        />
       </div>
 
       {/* Left color accent border */}
@@ -287,6 +341,14 @@ export default function NoteView(props: { noteId: string }) {
         class="absolute left-0 top-0 bottom-0 w-1"
         style={{ background: colorHex() }}
       />
+
+      <Show when={showDeleteConfirm()}>
+        <ConfirmDialog
+          message="删除这条便签？此操作无法撤销。"
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
+      </Show>
     </div>
   );
 }

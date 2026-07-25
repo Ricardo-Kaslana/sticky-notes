@@ -65,7 +65,7 @@ Read [README.md](./README.md) for the onboarding tour and [docs/superpowers/spec
 ## Hard rules (violating any of these breaks the build or the UX)
 
 1. **No `@solidjs/router`.** Routing is a manual `Switch/Match` in `src/index.tsx`. Do not add router dependencies — they do not play well with Tauri WebView (see commit `c70a459`).
-2. **Note ID delivery uses `initialization_script`, not URL query params.** `src-tauri/src/windows.rs` injects `window.__NOTE_ID__`; `src/index.tsx` reads it first and falls back to `?noteId=` only for Vite dev. Do **not** revert to query-param routing — the Tauri WebView URL handling was unreliable.
+2. **Note ID delivery uses injected globals + IPC, not URL query params.** `src-tauri/src/windows.rs` injects `window.__NOTE_ID__` (optimistic `initialization_script` + `on_page_load` eval), and `get_note_id` IPC (reads `window.label()`) is the reliable fallback read by `src/index.tsx`. Do **not** revert to query-param routing — the Tauri WebView URL handling was unreliable.
 3. **All Tauri invoke calls go through `src/lib/invoke.ts`.** Components must not import `@tauri-apps/api/core` directly.
 4. **All cross-window event calls go through `src/lib/events.ts`.** No raw `listen` / `emit`.
 5. **Notes persist as one JSON file per note** in `app_data_dir()/notes/<uuid>.json`. Do not introduce a database, SQLite, or a single notes file.
@@ -81,19 +81,20 @@ Read [README.md](./README.md) for the onboarding tour and [docs/superpowers/spec
 - **`index.html` keeps an aggressive runtime-error display** (`window.onerror`, `unhandledrejection`, resource-load failures, 20-second mount timeout). This is the only safety net for a broken bundle in production — **do not remove**.
 - **SolidJS `<For>` is the right iteration primitive** for the note grid; using `notes.map(...)` in JSX will not re-render on store updates.
 - **`createEffect` runs once on mount and re-runs on every signal read inside it.** Do not put `loadNotes()` calls inside a `createEffect` that also subscribes to events unless you want an infinite refresh loop — `MainView` already gets this right.
+- **`additional_browser_args` must be IDENTICAL on every window builder.** WebView2 refuses to create a webview whose browser args differ from the already-running browser process — the second window silently fails to open. Always use `windows::BROWSER_ARGS` on any new `WebviewWindowBuilder`.
 
 ---
 
 ## Known gaps (do not silently "fix")
 
-These are tracked in [CHANGELOG.md](./CHANGELOG.md) — the entries marked *(v0.1.2)* are resolved, the rest remain open:
+These are tracked in [CHANGELOG.md](./CHANGELOG.md) — the entries marked *(v0.1.2)* / *(v0.1.4)* / *(v0.1.5)* are resolved, the rest remain open:
 
-- `stores/settingsStore.ts` is **planned but never created**. `readSettings()` / `writeSettings()` work via `invoke.ts` but no UI consumes them.
+- `stores/settingsStore.ts` **exists** (v0.1.5) with a `SettingsDialog` UI reachable from the sidebar. Default color, auto-save interval, and close-to-tray behavior all take effect.
 - `src/App.tsx` is **deleted** (v0.1.2). Routing lives in `src/index.tsx`. No consolidation planned for v0.2.
 - `src/components/ColorPicker.tsx` is **wired up** in `NoteCard` right-click "Change color" menu (v0.1.2).
 - `NoteCard.tsx` right-click "Change color" **works** (v0.1.2). The floating window still has its own color row.
 - `tailwind.config.ts` is referenced in the original plan but **does not exist** — Tailwind v4 with `@tailwindcss/vite` doesn't need one.
-- Image paste/drag-drop is configured in TipTap (`Image.configure({ inline: true })`) but has **no UI button or paste handler** exposed.
+- Image paste/drag-drop **works** (v0.1.4): Ctrl+V, file drop, and a toolbar button all funnel through `insertImageFromBlob`. `delete_attachment` is registered (v0.1.5).
 
 If you change any of these, update both code and CHANGELOG.md.
 

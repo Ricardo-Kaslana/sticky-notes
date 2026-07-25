@@ -51,7 +51,9 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
                         app_handle.clone(),
                         id.clone(),
                         note,
-                    ) {
+                    )
+                    .await
+                    {
                         eprintln!("[tray] failed to write new note {}: {}", id, e);
                     }
                     if let Err(e) = crate::windows::create_note_window(

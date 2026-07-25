@@ -2,6 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager};
 use crate::models::Note;
+use super::{atomic_write, validate_id};
 
 fn notes_dir(app: &AppHandle) -> Result<PathBuf, String> {
     app.path()
@@ -17,7 +18,7 @@ fn ensure_notes_dir(app: &AppHandle) -> Result<PathBuf, String> {
 }
 
 #[tauri::command]
-pub fn list_notes(app: AppHandle) -> Result<Vec<Note>, String> {
+pub async fn list_notes(app: AppHandle) -> Result<Vec<Note>, String> {
     let dir = ensure_notes_dir(&app)?;
     let mut notes = Vec::new();
     let entries = fs::read_dir(&dir).map_err(|e| e.to_string())?;
@@ -58,7 +59,8 @@ pub fn list_notes(app: AppHandle) -> Result<Vec<Note>, String> {
 }
 
 #[tauri::command]
-pub fn read_note(app: AppHandle, id: String) -> Result<Note, String> {
+pub async fn read_note(app: AppHandle, id: String) -> Result<Note, String> {
+    validate_id(&id)?;
     let dir = ensure_notes_dir(&app)?;
     let path = dir.join(format!("{}.json", id));
     let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
@@ -66,22 +68,35 @@ pub fn read_note(app: AppHandle, id: String) -> Result<Note, String> {
 }
 
 #[tauri::command]
-pub fn write_note(app: AppHandle, id: String, mut note: Note) -> Result<(), String> {
+pub async fn write_note(app: AppHandle, id: String, mut note: Note) -> Result<(), String> {
+    validate_id(&id)?;
+    if note.id != id {
+        return Err(format!("note id mismatch: {} != {}", note.id, id));
+    }
     let dir = ensure_notes_dir(&app)?;
     note.updated_at = chrono::Utc::now().to_rfc3339();
     let path = dir.join(format!("{}.json", id));
     let json = serde_json::to_string_pretty(&note).map_err(|e| e.to_string())?;
-    fs::write(&path, json).map_err(|e| e.to_string())?;
+    atomic_write(&path, &json)?;
     let _ = app.emit("note-updated", &note);
     Ok(())
 }
 
 #[tauri::command]
-pub fn delete_note(app: AppHandle, id: String) -> Result<(), String> {
+pub async fn delete_note(app: AppHandle, id: String) -> Result<(), String> {
+    validate_id(&id)?;
     let dir = ensure_notes_dir(&app)?;
     let path = dir.join(format!("{}.json", id));
     if path.exists() {
         fs::remove_file(&path).map_err(|e| e.to_string())?;
+    }
+    if let Ok(base) = app.path().app_data_dir() {
+        let attachments = base.join("attachments").join(&id);
+        if attachments.exists() {
+            if let Err(e) = fs::remove_dir_all(&attachments) {
+                eprintln!("[notes] failed to remove attachments for {}: {}", id, e);
+            }
+        }
     }
     let _ = app.emit("note-deleted", &id);
     Ok(())

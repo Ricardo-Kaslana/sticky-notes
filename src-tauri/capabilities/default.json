@@ -5,7 +5,6 @@
   "windows": ["main", "note-*"],
   "permissions": [
     "core:default",
-    "shell:allow-open",
     "core:window:allow-close",
     "core:window:allow-set-focus",
     "core:window:allow-show",

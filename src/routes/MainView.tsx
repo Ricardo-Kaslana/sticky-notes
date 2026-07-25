@@ -1,37 +1,44 @@
-import { createSignal, createMemo, onMount, onCleanup } from "solid-js";
+import { createSignal, createMemo, onMount, onCleanup, Show } from "solid-js";
 import { notes, loadNotes } from "../stores/notesStore";
+import { settings, loadSettings, saveSettings } from "../stores/settingsStore";
 import { onNoteUpdated, onNoteDeleted } from "../lib/events";
 import { openNoteWindow, writeNote } from "../lib/invoke";
 import { filterNotes } from "../lib/filterNotes";
 import Sidebar from "../components/Sidebar";
 import MasonryGrid from "../components/MasonryGrid";
+import SettingsDialog from "../components/SettingsDialog";
 import { DEFAULT_NOTE_POSITION, Note } from "../lib/types";
 
 export default function MainView() {
   const [searchQuery, setSearchQuery] = createSignal("");
   const [selectedTag, setSelectedTag] = createSignal("");
   const [filterPinned, setFilterPinned] = createSignal(false);
+  const [showSettings, setShowSettings] = createSignal(false);
 
   // Single-shot initial load.
   onMount(() => {
     loadNotes();
+    loadSettings().catch((e) =>
+      console.error("[MainView] failed to load settings:", e)
+    );
   });
 
-  // Register cross-window listeners. We await the listen() promises so
-  // the unlisten handles are assigned before onMount returns; onCleanup
-  // then runs them synchronously on unmount, with no window in which a
-  // leaked listener could fire.
-  onMount(async () => {
-    try {
-      const unlistenUpdate = await onNoteUpdated(() => loadNotes());
-      const unlistenDelete = await onNoteDeleted(() => loadNotes());
-      onCleanup(() => {
-        unlistenUpdate();
-        unlistenDelete();
-      });
-    } catch (e) {
-      console.error("[MainView] failed to register note listeners:", e);
-    }
+  // Register cross-window listeners. onCleanup must be registered
+  // synchronously (before any await) or Solid drops it; the unlisten
+  // handles resolve later and are invoked through the promises.
+  onMount(() => {
+    const unlistenUpdate = onNoteUpdated(() => loadNotes());
+    const unlistenDelete = onNoteDeleted(() => loadNotes());
+    unlistenUpdate.catch((e) =>
+      console.error("[MainView] failed to register note-updated listener:", e)
+    );
+    unlistenDelete.catch((e) =>
+      console.error("[MainView] failed to register note-deleted listener:", e)
+    );
+    onCleanup(() => {
+      unlistenUpdate.then((un) => un()).catch(() => {});
+      unlistenDelete.then((un) => un()).catch(() => {});
+    });
   });
 
   const filteredNotes = createMemo(() =>
@@ -43,35 +50,42 @@ export default function MainView() {
   );
 
   const [createError, setCreateError] = createSignal<string | null>(null);
+  let creating = false;
 
   const handleCreateNote = async () => {
+    if (creating) return;
+    creating = true;
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
+    // Cascade new windows so consecutive notes don't stack exactly on top
+    // of each other.
+    const step = (notes.length % 8) * 28;
+    const position = {
+      ...DEFAULT_NOTE_POSITION,
+      x: DEFAULT_NOTE_POSITION.x + step,
+      y: DEFAULT_NOTE_POSITION.y + step,
+    };
     const note: Note = {
       id,
       title: "",
       content: "<p></p>",
-      color: "paper",
+      color: settings().defaultColor,
       tags: [],
-      position: { ...DEFAULT_NOTE_POSITION },
+      position,
       pinned: false,
       createdAt: now,
       updatedAt: now,
     };
     try {
       await writeNote(id, note);
-      await openNoteWindow(
-        id,
-        DEFAULT_NOTE_POSITION.x,
-        DEFAULT_NOTE_POSITION.y,
-        DEFAULT_NOTE_POSITION.width,
-        DEFAULT_NOTE_POSITION.height
-      );
+      await openNoteWindow(id, position.x, position.y, position.width, position.height);
       await loadNotes();
       setCreateError(null);
     } catch (e) {
       console.error("[MainView] Failed to create note:", e);
       setCreateError(String(e));
+    } finally {
+      creating = false;
     }
   };
 
@@ -95,9 +109,22 @@ export default function MainView() {
           filterPinned={filterPinned()}
           onFilterPinnedChange={setFilterPinned}
           onCreateNote={handleCreateNote}
+          onOpenSettings={() => setShowSettings(true)}
         />
         <MasonryGrid notes={filteredNotes()} hasAnyNotes={notes.length > 0} />
       </div>
+      <Show when={showSettings()}>
+        <SettingsDialog
+          settings={settings()}
+          onCancel={() => setShowSettings(false)}
+          onSave={(next) => {
+            setShowSettings(false);
+            saveSettings(next).catch((e) =>
+              console.error("[MainView] failed to save settings:", e)
+            );
+          }}
+        />
+      </Show>
     </div>
   );
 }

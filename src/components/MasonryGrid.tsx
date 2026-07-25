@@ -18,8 +18,8 @@ export default function MasonryGrid(props: MasonryGridProps) {
       {props.notes.length === 0 && (
         <div class="flex items-center justify-center h-full text-gray-400 text-sm">
           {props.hasAnyNotes
-            ? "No notes match the current filter"
-            : 'No notes yet — click "+ 新建便签" to create one'}
+            ? "没有符合当前筛选条件的便签"
+            : "还没有便签 — 点击「+ 新建便签」创建一条"}
         </div>
       )}
     </div>

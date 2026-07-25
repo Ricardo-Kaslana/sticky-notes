@@ -1,4 +1,4 @@
-import { createStore, produce } from "solid-js/store";
+import { createStore, produce, reconcile } from "solid-js/store";
 import type { Note } from "../lib/types";
 import * as api from "../lib/invoke";
 
@@ -8,7 +8,9 @@ export { notes };
 
 export async function loadNotes(): Promise<void> {
   const data = await api.listNotes();
-  setNotes(data);
+  // Keyed diff: only notes that actually changed produce store updates,
+  // so unchanged NoteCards keep their DOM.
+  setNotes(reconcile(data, { key: "id" }));
 }
 
 export async function saveNote(note: Note): Promise<void> {

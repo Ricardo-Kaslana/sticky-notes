@@ -7,6 +7,55 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/), 
 ---
 
 
+## [0.1.5] — 2026-07-25
+
+全面加固与体验升级 sweep（六个批次：安全 → 数据丢失 → 稳定性 → 性能 → 设置 UI → UX）。
+
+### Security
+
+- **便签 ID 校验**：新增共享 `validate_id()`（≤64 字符，仅字母数字与 `-`），`read_note` / `write_note` / `delete_note` / 附件目录解析 / `open_note_window` 全部套用。堵住路径穿越与 `eval` 脚本注入两条攻击面。
+- **`write_note` ID 一致性检查**：请求参数 `id` 与 body 中 `note.id` 不一致时拒绝写入。
+- **`safe_filename` 强化**：额外拒绝 `:`、控制字符、结尾点/空格、超 128 字符及 Windows 保留设备名（CON/PRN/AUX/NUL/COM1-9/LPT1-9）。
+- **CSP 收紧**：`tauri.conf.json` 由 `null` 改为显式白名单（`script-src 'self'`、`img-src` 仅 asset 协议/blob/data、`connect-src` 仅 IPC）。
+- **移除未使用的 `shell:allow-open` 能力**。
+- **`stripHtml` 改用 `DOMParser`** 替代 innerHTML 赋值，杜绝解析期资源加载。
+
+### Fixed
+
+- **原子写盘**：`write_note` / `write_settings` 先写 `.tmp` 再 `rename`，崩溃不再产生半截 JSON。
+- **删除便签时清理附件目录**（`attachments/<id>` best-effort 删除）。
+- **NoteToolbar 永不渲染 bug**：Solid 组件只执行一次，原先 `if (!editor) return null` 是永久性的。改为 `<Show when={props.editor}>` + TipTap `transaction` 事件桥接的 version 信号，工具栏激活态现在实时刷新。
+- **标题 / 标签 / 颜色 / 置顶修改不触发自动保存** —— 全部接入 debounce autoSave；关窗前 `cancel()` + `saveNow()` 确保零丢失。
+- **NoteCard 改色覆盖浮窗最新内容**：先 `readNote` 取新鲜快照再写回，失败时回滚本地乐观更新。
+- **MainView 事件监听同步注册**：`onCleanup` 在 `await` 前登记，卸载不再泄漏监听器。
+- **托盘写便签调用漏 `.await`**（命令异步化后的编译错误）。
+
+### Added
+
+- **单实例插件**（`tauri-plugin-single-instance`）：二次启动唤起已有主窗口。
+- **设置 UI**：新建 `stores/settingsStore.ts` + `SettingsDialog.tsx`（默认颜色 / 自动保存间隔 / 关闭行为），侧栏「设置」入口。主窗口关闭行为与新便签默认颜色、自动保存间隔均实际生效。
+- **`delete_attachment` 重新注册**到 invoke_handler，前端 `invoke.ts` 提供包装。
+- **浮窗删除入口**：便签窗口头部新增删除按钮 + ConfirmDialog。
+- **新便签级联偏移**：连续新建的便签窗口按 28px 阶梯错开，不再完全重叠。
+- **搜索匹配纯文本**：`filterNotes` 先剥 HTML 标签再匹配，`<p>`、`b>` 等标记不再误命中；结果按 `updatedAt` 倒序。
+- **颜色选择器点击外部关闭**（NoteCard 内联 picker 增加遮罩层）。
+
+### Changed
+
+- **附件上传走 raw-body IPC**：`save_attachment` 改用 `tauri::ipc::Request` 原始字节 + percent-encoded 头部传参，替代 JSON `number[]`（25MB 图片不再序列化为数组）。
+- **`notesStore.loadNotes` 使用 `reconcile(data, { key: "id" })`**，刷新列表按 id diff，不再整表重建 DOM。
+- **`debounce` 泛型化 + `flush()` 异步等待**底层函数完成。
+- **侧栏搜索输入 200ms 防抖**。
+- **启动提速**：`NoteView`（TipTap 编辑器）改为 `lazy()` 按需加载，主窗口首包从 387KB 降到 48KB；主窗口经 `initialization_script` 注入 `__MAIN_WINDOW__` 同步路由，不再等待 `get_note_id` IPC 失败后才渲染。
+- **便签窗口打开提速**：非主窗口立即并行预载编辑器 chunk（不再等路由 IPC 返回后才下载）；便签窗口乐观注入 `initialization_script`（`__NOTE_ID__`，eval + IPC 兜底保留）；`readNote` 与 TipTap 初始化并行发起；`lucide-solid` 改为按图标深导入（桶导入在 Vite dev 下会逐个请求约 3500 个图标模块，是 dev 模式内容加载慢的主因）。
+- **dev 启动提速**：WebView2 追加 `--no-proxy-server`（系统代理开启时 localhost 加载会被代理解析拖慢数秒）；Vite `server.warmup` 预转换两个窗口的模块图，首次请求命中缓存。所有窗口统一使用 `windows::BROWSER_ARGS` —— WebView2 要求同进程内所有 webview 的浏览器参数一致，参数不一致会导致第二个窗口静默创建失败。
+- **Rust release profile**：LTO + `opt-level="s"` + strip，减小产物体积。
+- **全部 UI 文案统一中文**（卡片菜单、确认对话框、空状态、侧栏、浮窗工具栏）。
+
+### Tests
+
+- Rust 12/12（新增 `validate_id` / `safe_filename` 强化用例）；前端 32/32（新增 debounce 5 例、filterNotes 剥标签/排序用例）；`tsc --noEmit` 干净。
+
 ## [0.1.4] — 2026-07-15
 
 ### Added

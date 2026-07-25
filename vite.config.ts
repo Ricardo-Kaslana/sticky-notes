@@ -8,6 +8,11 @@ export default defineConfig({
   server: {
     port: 1420,
     strictPort: true,
+    warmup: {
+      // Pre-transform both windows' module graphs at server start so the
+      // first webview request is served from cache.
+      clientFiles: ["./src/index.tsx", "./src/routes/NoteView.tsx"],
+    },
   },
   envPrefix: ["VITE_", "TAURI_"],
   build: {

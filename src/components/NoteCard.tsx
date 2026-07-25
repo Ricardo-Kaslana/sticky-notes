@@ -1,7 +1,7 @@
 import { Note, getColorHex } from "../lib/types";
-import { openNoteWindow, closeNoteWindow, writeNote } from "../lib/invoke";
+import { openNoteWindow, closeNoteWindow, writeNote, readNote } from "../lib/invoke";
 import { deleteNoteById, updateNoteLocal } from "../stores/notesStore";
-import { createSignal, Show } from "solid-js";
+import { createSignal, createMemo, Show } from "solid-js";
 import ConfirmDialog from "./ConfirmDialog";
 import ColorPicker from "./ColorPicker";
 
@@ -15,10 +15,14 @@ export default function NoteCard(props: NoteCardProps) {
   const [showConfirm, setShowConfirm] = createSignal(false);
   const [showColorPicker, setShowColorPicker] = createSignal(false);
 
-  const handleDoubleClick = () => {
+  const openWindow = () => {
     const p = props.note.position;
-    openNoteWindow(props.note.id, p.x, p.y, p.width, p.height);
+    openNoteWindow(props.note.id, p.x, p.y, p.width, p.height).catch((e) =>
+      console.error("[NoteCard] Failed to open note window:", e)
+    );
   };
+
+  const handleDoubleClick = () => openWindow();
 
   const handleContextMenu = (e: MouseEvent) => {
     e.preventDefault();
@@ -28,36 +32,45 @@ export default function NoteCard(props: NoteCardProps) {
 
   const handlePopOut = () => {
     setShowMenu(false);
-    const p = props.note.position;
-    openNoteWindow(props.note.id, p.x, p.y, p.width, p.height);
+    openWindow();
   };
 
-  const handleChangeColor = (color: Note["color"]) => {
+  const handleChangeColor = async (color: Note["color"]) => {
     setShowColorPicker(false);
     // Optimistic local update so the card flips instantly.
     updateNoteLocal(props.note.id, { color });
-    const updated: Note = {
-      ...props.note,
-      color,
-      updatedAt: new Date().toISOString(),
-    };
-    writeNote(props.note.id, updated).catch((e) => {
+    try {
+      // Re-read before writing: the card's snapshot may be stale if the
+      // note is open in a floating window that just auto-saved.
+      const fresh = await readNote(props.note.id);
+      await writeNote(props.note.id, { ...fresh, color });
+    } catch (e) {
       console.error("[NoteCard] Failed to change color:", e);
-    });
+      updateNoteLocal(props.note.id, { color: props.note.color });
+    }
   };
 
   const handleDelete = async () => {
     setShowConfirm(false);
     setShowMenu(false);
-    await closeNoteWindow(props.note.id);
-    await deleteNoteById(props.note.id);
+    try {
+      await closeNoteWindow(props.note.id);
+    } catch (e) {
+      console.error("[NoteCard] Failed to close note window:", e);
+    }
+    try {
+      await deleteNoteById(props.note.id);
+    } catch (e) {
+      console.error("[NoteCard] Failed to delete note:", e);
+    }
   };
 
-  const stripHtml = (html: string) => {
-    const div = document.createElement("div");
-    div.innerHTML = html;
-    return div.textContent || "";
-  };
+  // DOMParser never loads resources nor fires event handlers, unlike
+  // assigning innerHTML on a detached element.
+  const stripHtml = (html: string) =>
+    new DOMParser().parseFromString(html, "text/html").body.textContent || "";
+
+  const preview = createMemo(() => stripHtml(props.note.content));
 
   const colorHex = () => getColorHex(props.note.color);
 
@@ -76,6 +89,13 @@ export default function NoteCard(props: NoteCardProps) {
 
         {/* Inline color picker (toggled by right-click → "Change color") */}
         <Show when={showColorPicker()}>
+          <div
+            class="fixed inset-0 z-10"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowColorPicker(false);
+            }}
+          />
           <div class="absolute top-1 right-7 z-20">
             <ColorPicker
               selected={props.note.color}
@@ -85,11 +105,11 @@ export default function NoteCard(props: NoteCardProps) {
         </Show>
 
         <h3 class="font-semibold text-sm mb-1 truncate text-gray-800">
-          {props.note.title || "Untitled"}
+          {props.note.title || "无标题"}
         </h3>
 
         <p class="text-xs text-gray-600 line-clamp-3 leading-relaxed">
-          {stripHtml(props.note.content)}
+          {preview()}
         </p>
 
         <Show when={props.note.tags.length > 0}>
@@ -117,7 +137,7 @@ export default function NoteCard(props: NoteCardProps) {
             class="w-full text-left px-3 py-1.5 hover:bg-gray-50 text-gray-700"
             onClick={handlePopOut}
           >
-            Pop out
+            弹出窗口
           </button>
           <button
             class="w-full text-left px-3 py-1.5 hover:bg-gray-50 text-gray-700"
@@ -126,21 +146,21 @@ export default function NoteCard(props: NoteCardProps) {
               setShowColorPicker(true);
             }}
           >
-            Change color
+            更换颜色
           </button>
           <div class="border-t border-gray-100 my-0.5" />
           <button
             class="w-full text-left px-3 py-1.5 hover:bg-red-50 text-red-600"
             onClick={() => { setShowConfirm(true); }}
           >
-            Delete
+            删除
           </button>
         </div>
       </Show>
 
       <Show when={showConfirm()}>
         <ConfirmDialog
-          message="Delete this note? This cannot be undone."
+          message="删除这条便签？此操作无法撤销。"
           onConfirm={handleDelete}
           onCancel={() => setShowConfirm(false)}
         />

@@ -42,8 +42,19 @@ describe("filterNotes", () => {
     expect(filterNotes(NOTES, { ...NONE, query: "HELLO" }).map((n) => n.id)).toEqual(["b", "c"]);
   });
 
-  it("query matches against raw HTML content", () => {
+  it("query matches text content, not HTML markup", () => {
     expect(filterNotes(NOTES, { ...NONE, query: "bold" }).map((n) => n.id)).toEqual(["c"]);
+    expect(filterNotes(NOTES, { ...NONE, query: "<p>" })).toEqual([]);
+    expect(filterNotes(NOTES, { ...NONE, query: "b>" })).toEqual([]);
+  });
+
+  it("results are sorted by updatedAt descending", () => {
+    const dated = [
+      note({ id: "old", updatedAt: "2026-01-01T00:00:00Z" }),
+      note({ id: "new", updatedAt: "2026-06-01T00:00:00Z" }),
+      note({ id: "mid", updatedAt: "2026-03-01T00:00:00Z" }),
+    ];
+    expect(filterNotes(dated, NONE).map((n) => n.id)).toEqual(["new", "mid", "old"]);
   });
 
   it("tag filter is case-insensitive", () => {

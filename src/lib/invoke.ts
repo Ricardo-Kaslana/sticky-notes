@@ -20,9 +20,23 @@ export async function deleteNote(id: string): Promise<void> {
 export async function saveAttachment(
   noteId: string,
   fileName: string,
-  data: number[]
+  data: Uint8Array
 ): Promise<string> {
-  return invoke<string>("save_attachment", { noteId, fileName, data });
+  // Raw-body invoke: bytes go over IPC untouched instead of being
+  // serialized into a JSON number array.
+  return invoke<string>("save_attachment", data, {
+    headers: {
+      "x-note-id": encodeURIComponent(noteId),
+      "x-file-name": encodeURIComponent(fileName),
+    },
+  });
+}
+
+export async function deleteAttachment(
+  noteId: string,
+  fileName: string
+): Promise<void> {
+  return invoke("delete_attachment", { noteId, fileName });
 }
 
 export async function readSettings(): Promise<Settings> {

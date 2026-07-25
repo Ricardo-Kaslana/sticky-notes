@@ -19,8 +19,7 @@ export async function insertImageFromBlob(
   const fileName = pastedFilename(blob.type);
   try {
     const buffer = await blob.arrayBuffer();
-    const bytes = Array.from(new Uint8Array(buffer));
-    const savedPath = await saveAttachment(noteId, fileName, bytes);
+    const savedPath = await saveAttachment(noteId, fileName, new Uint8Array(buffer));
     const src = convertFileSrc(savedPath);
     editor.commands.setImage({ src, alt: "" });
   } catch (e) {

@@ -1,18 +1,18 @@
-export function debounce<T extends (...args: unknown[]) => void>(
-  fn: T,
+export function debounce<Args extends unknown[]>(
+  fn: (...args: Args) => unknown,
   delayMs: number
-): ((...args: Parameters<T>) => void) & { cancel: () => void; flush: () => void } {
+): ((...args: Args) => void) & { cancel: () => void; flush: () => Promise<void> } {
   let timer: ReturnType<typeof setTimeout> | null = null;
-  let lastArgs: Parameters<T> | null = null;
+  let lastArgs: Args | null = null;
 
-  const callable = (...args: Parameters<T>) => {
+  const callable = (...args: Args) => {
     lastArgs = args;
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => {
       timer = null;
       const a = lastArgs;
       lastArgs = null;
-      if (a) fn(...a);
+      if (a) void fn(...a);
     }, delayMs);
   };
   callable.cancel = () => {
@@ -20,14 +20,14 @@ export function debounce<T extends (...args: unknown[]) => void>(
     timer = null;
     lastArgs = null;
   };
-  callable.flush = () => {
+  callable.flush = async () => {
     if (timer) {
       clearTimeout(timer);
       timer = null;
     }
     const a = lastArgs;
     lastArgs = null;
-    if (a) fn(...a);
+    if (a) await fn(...a);
   };
   return callable;
 }
