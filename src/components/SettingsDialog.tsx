@@ -22,6 +22,9 @@ export default function SettingsDialog(props: SettingsDialogProps) {
     props.settings.autoSaveIntervalMs
   );
   const [trayOnClose, setTrayOnClose] = createSignal(props.settings.trayOnClose);
+  const [launchOnStartup, setLaunchOnStartup] = createSignal(
+    props.settings.launchOnStartup
+  );
 
   const handleSave = () => {
     props.onSave({
@@ -29,6 +32,7 @@ export default function SettingsDialog(props: SettingsDialogProps) {
       defaultColor: defaultColor(),
       autoSaveIntervalMs: autoSaveIntervalMs(),
       trayOnClose: trayOnClose(),
+      launchOnStartup: launchOnStartup(),
     });
   };
 
@@ -69,13 +73,22 @@ export default function SettingsDialog(props: SettingsDialogProps) {
           </select>
         </div>
 
-        <label class="flex items-center gap-2 mb-5 text-sm text-gray-700 cursor-pointer">
+        <label class="flex items-center gap-2 mb-3 text-sm text-gray-700 cursor-pointer">
           <input
             type="checkbox"
             checked={trayOnClose()}
             onChange={(e) => setTrayOnClose(e.currentTarget.checked)}
           />
           关闭主窗口时最小化到托盘
+        </label>
+
+        <label class="flex items-center gap-2 mb-5 text-sm text-gray-700 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={launchOnStartup()}
+            onChange={(e) => setLaunchOnStartup(e.currentTarget.checked)}
+          />
+          开机自动启动
         </label>
 
         <div class="flex justify-end gap-2">

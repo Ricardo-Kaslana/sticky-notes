@@ -1,24 +1,26 @@
 [package]
 name = "sticky-notes"
-version = "0.1.5"
+version = "0.1.6"
 description = "A sticky notes desktop application"
 authors = ["you"]
 edition = "2021"
 
 [lib]
 name = "sticky_notes_lib"
-crate-type = ["staticlib", "cdylib", "rlib"]
+crate-type = ["cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = ["tray-icon", "protocol-asset"] }
-tauri-plugin-shell = "2"
 tauri-plugin-single-instance = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-log = "2"
+log = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 uuid = { version = "1", features = ["v4"] }
 percent-encoding = "2"
 

@@ -7,6 +7,43 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/), 
 ---
 
 
+## [0.1.6] — 2026-07-25
+
+全量优化 sweep：按 2026-07-25 复查报告修复全部 High / Medium / Low 项。
+
+### Fixed
+
+- **双重 `note-updated` 事件**：后端成为唯一广播源，payload 变为 `{ note, source }`（source = 发起窗口 label 或 `"tray"`），各窗口据此过滤自身回声。前端 `emitNoteUpdated` / `emitNoteDeleted` 删除；浮窗改色不再被主窗口的回声事件回滚。
+- **NoteView 保存生命周期重构**：`pendingSave` promise 链串行化所有保存（并发保存不再交叉写盘）；`onCloseRequested` 里 `cancel()` 防抖后 `await saveNow()`，保存失败首次 `preventDefault()` 并提示，再次关闭放弃更改（`saveFailedOnce` 逃生口）；删除流程置 `deleted` 标志阻断后续自动保存。
+- **`atomic_write` 唯一临时文件名**（`.{pid}.{seq}.tmp`，AtomicU64 计数）：主窗口与浮窗并发写同一便签不再共享 tmp 文件导致 rename 交叉。
+- **`save_attachment` 防覆盖 + 原子写**：同名文件自动追加 `-1`、`-2`… 后缀（`unique_path`）；两个附件命令改 `#[tauri::command(async)]`，25MB 写盘不再阻塞主线程。
+- **托盘退出丢失未保存编辑**：托盘 Quit 与「关闭即退出」路径改走 `close_notes_and_exit` —— 先 `close()` 所有便签窗口（触发各自 JS 保存），轮询等待（上限 5s）后再退出。
+- **settings.json 损坏永久卡死设置对话框**：解析失败时改名 `.json.bak` 并回退默认值；设置增加缓存（`AppState.settings`），主窗口每次关闭不再重复读盘。
+- **`write_settings` 入参校验**：颜色必须在调色板内（`models::COLOR_KEYS`），自动保存间隔 clamp 到 500ms–1h。
+- **搜索重复剥 HTML**：`filterNotes` 增加 `updatedAt` 键控的纯文本缓存，每次击键不再对全部便签重复 DOMParser。
+- **NoteCard 右键菜单溢出屏幕**：菜单坐标按视口 clamp。
+- **Sidebar 防抖搜索卸载后触发**：`onCleanup` 中 `cancel()`。
+
+### Added
+
+- **identifier 改为 `com.dawnwang.stickynotes`**（原裸 `sticky-notes`），并带一次性数据迁移：启动时（建窗前）把旧 app-data 目录的 `notes/` / `attachments/` / `settings.json` 移到新目录，同时重写便签 JSON 里指向旧目录的 `asset.localhost` 图片 URL（URL-encoded 与 JSON-escaped 两种形态）。
+- **`launchOnStartup` 真正生效**：接入 `tauri-plugin-autostart`，设置对话框新增「开机自动启动」勾选；启动时与 `write_settings` 时均同步 OS 自启动项。
+- **文件日志**：接入 `tauri-plugin-log`（Stdout + LogDir 双目标，Info 级），全部 `eprintln!` 换成 `log::warn!` / `log::error!`。
+- **`settings-changed` 事件**：`write_settings` 广播新设置，已打开的浮窗即时应用新的自动保存间隔（`debounce` 支持延迟取值函数）。
+- **托盘 New note 尊重默认颜色**，坐标复用 `NotePosition::default()`（删除 tray.rs 手工镜像常量）。
+- **图片插入失败提示**：粘贴/拖拽/工具栏三条路径失败时浮窗顶部显示琥珀色横幅（5s 自动消失），不再静默丢弃。
+
+### Changed
+
+- **capabilities 收敛**：删除未用的 `tauri-plugin-shell`（Cargo.toml、lib.rs、package.json、capabilities 全链路移除），新增 `core:window:allow-destroy`（JS 侧 `onCloseRequested` 流程需要）。
+- **MainView 增量更新**：`note-updated` / `note-deleted` 直接用事件 payload 打补丁（`reconcile` keyed diff），不再整表 `loadNotes()`；新建便签同样不再全量刷新。
+- **`TAURI_DEBUG` → `TAURI_ENV_DEBUG`**（Tauri 2 改名后 vite.config.ts 的判定一直落空）。
+- **杂项清理**：`index.html` 错误覆盖层挂载后只写 console；`vite-env.d.ts` 补 `__NOTE_ID__` / `__MAIN_WINDOW__` / `__APP_MOUNTED__` 类型（去掉 `as any`）；`get_note_id` 改 `strip_prefix` 并删调试日志；托盘分隔符改 `PredefinedMenuItem::separator`；`AppState.is_exiting` 改 `AtomicBool`；`NoteCard` 标签渲染改 `<For>`；Sidebar 置顶计数 memo 化；删除 `notesStore.saveNote` 死代码；chrono 关默认特性只留 `clock`。
+
+### Tests
+
+- Rust 12/12；前端 32/32；`tsc --noEmit`、`cargo check` 干净。
+
 ## [0.1.5] — 2026-07-25
 
 全面加固与体验升级 sweep（六个批次：安全 → 数据丢失 → 稳定性 → 性能 → 设置 UI → UX）。

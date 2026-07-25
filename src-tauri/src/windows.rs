@@ -37,7 +37,7 @@ pub fn create_note_window(
     // The on_page_load eval + IPC below remain as the reliable fallback.
     // note_id passed validate_id (alnum + '-'), safe to embed.
     let init_script = format!("window.__NOTE_ID__ = '{}';", note_id);
-    let win = WebviewWindowBuilder::new(app, &label, WebviewUrl::App("index.html".into()))
+    WebviewWindowBuilder::new(app, &label, WebviewUrl::App("index.html".into()))
         .title("")
         .inner_size(width, height)
         .position(x, y)
@@ -53,23 +53,22 @@ pub fn create_note_window(
                 return;
             }
             let Some(w) = app_handle.get_webview_window(&label_for_cb) else {
-                eprintln!("[windows] {} gone before page-load finalize", label_for_cb);
+                log::warn!("[windows] {} gone before page-load finalize", label_for_cb);
                 return;
             };
             let script = format!("window.__NOTE_ID__ = '{}';", note_id_owned);
             if let Err(e) = w.eval(&script) {
-                eprintln!("[windows] {} eval FAILED: {}", label_for_cb, e);
+                log::error!("[windows] {} eval failed: {}", label_for_cb, e);
             }
             if let Err(e) = w.show() {
-                eprintln!("[windows] {} show FAILED: {}", label_for_cb, e);
+                log::error!("[windows] {} show failed: {}", label_for_cb, e);
             }
             if let Err(e) = w.set_focus() {
-                eprintln!("[windows] {} set_focus FAILED: {}", label_for_cb, e);
+                log::warn!("[windows] {} set_focus failed: {}", label_for_cb, e);
             }
         })
         .build()?;
 
-    let _ = win; // result consumed by the `?` above; keep the binding for clarity
     Ok(())
 }
 
@@ -104,7 +103,7 @@ pub fn open_note_window(
     // than a second OS-level window.
     tauri::async_runtime::spawn(async move {
         if let Err(e) = create_note_window(&app, &note_id, x, y, width, height) {
-            eprintln!("[windows] failed to create note window {}: {}", note_id, e);
+            log::error!("[windows] failed to create note window {}: {}", note_id, e);
         }
     });
     Ok(())
@@ -124,13 +123,11 @@ pub fn close_note_window(app: AppHandle, note_id: String) -> Result<(), String> 
 /// because initialization_script does not execute in secondary windows.
 #[tauri::command]
 pub fn get_note_id(window: tauri::Window) -> Result<String, String> {
-    let label = window.label();
-    eprintln!("[windows] get_note_id: window.label() = '{}'", label);
-    if label.starts_with("note-") {
-        Ok(label[5..].to_string())
-    } else {
-        Err("not a note window".into())
-    }
+    window
+        .label()
+        .strip_prefix("note-")
+        .map(|id| id.to_string())
+        .ok_or_else(|| "not a note window".into())
 }
 
 #[tauri::command]

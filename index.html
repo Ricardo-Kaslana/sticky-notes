@@ -17,8 +17,13 @@
   <body>
     <div id="root"><div style="padding:2rem;color:#999;">Loading...</div></div>
     <script>
-      // Display an error in #root; used by all error handlers below
+      // Display an error in #root; used by all error handlers below.
+      // Once the app has mounted, never wipe the live UI — just log.
       function showError(label, detail) {
+        if (window.__APP_MOUNTED__) {
+          console.error(label, detail);
+          return;
+        }
         var root = document.getElementById('root');
         if (!root) return;
         root.innerHTML = '';

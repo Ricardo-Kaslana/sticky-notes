@@ -17,8 +17,8 @@ function App() {
   // Synchronous identity checks, in priority order:
   // 1. __NOTE_ID__ (set by on_page_load eval in note windows)
   // 2. __MAIN_WINDOW__ (set by initialization_script on the main window)
-  const injectedId = (window as any).__NOTE_ID__ as string | undefined;
-  const isMain = (window as any).__MAIN_WINDOW__ === true;
+  const injectedId = window.__NOTE_ID__;
+  const isMain = window.__MAIN_WINDOW__ === true;
 
   // Not the main window → this is (almost certainly) a note window.
   // Start fetching the editor chunk now, in parallel with route
@@ -87,4 +87,4 @@ try {
   console.error("Failed to render app:", e);
   throw e;
 }
-(window as any).__APP_MOUNTED__ = true;
+(window as Window).__APP_MOUNTED__ = true;

@@ -7,6 +7,7 @@ import { insertImageFromBlob } from "../lib/insertImageFromBlob";
 interface NoteToolbarProps {
   editor: Editor | undefined | null;
   noteId: string;
+  onImageError?: (msg: string) => void;
 }
 
 export default function NoteToolbar(props: NoteToolbarProps) {
@@ -44,12 +45,19 @@ export default function NoteToolbar(props: NoteToolbarProps) {
     const input = e.currentTarget as HTMLInputElement;
     const files = input.files;
     if (!files || !props.editor) return;
-    for (const file of Array.from(files)) {
-      void insertImageFromBlob(props.editor, file, props.noteId);
-    }
+    const blobs = Array.from(files);
     // Allow re-selecting the same file later (otherwise the change event
     // would not fire when the user picks the same path twice).
     input.value = "";
+    void (async () => {
+      let failed = 0;
+      for (const file of blobs) {
+        if (!props.editor) return;
+        const ok = await insertImageFromBlob(props.editor, file, props.noteId);
+        if (!ok) failed++;
+      }
+      if (failed > 0) props.onImageError?.(`${failed} 张图片插入失败，请重试。`);
+    })();
   };
 
   return (

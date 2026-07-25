@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
 
+/// Mirror of the `COLORS` keys in src/lib/types.ts — keep in sync manually.
+pub const COLOR_KEYS: [&str; 6] = ["paper", "blush", "sky", "sage", "apricot", "lavender"];
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct NotePosition {
     pub x: f64,

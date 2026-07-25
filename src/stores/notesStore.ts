@@ -13,14 +13,16 @@ export async function loadNotes(): Promise<void> {
   setNotes(reconcile(data, { key: "id" }));
 }
 
-export async function saveNote(note: Note): Promise<void> {
-  await api.writeNote(note.id, note);
-  setNotes(
-    (n) => n.id === note.id,
-    produce((draft) => {
-      Object.assign(draft, note);
-    })
-  );
+/** Upsert from a note-updated event payload — no disk rescan needed. */
+export function applyNoteUpdate(note: Note): void {
+  // The backend bumps updatedAt on every write, so the updated note
+  // belongs at the front of the newest-first list.
+  const next = [note, ...notes.filter((n) => n.id !== note.id)];
+  setNotes(reconcile(next, { key: "id" }));
+}
+
+export function removeNoteLocal(id: string): void {
+  setNotes((ns) => ns.filter((n) => n.id !== id));
 }
 
 export async function deleteNoteById(id: string): Promise<void> {

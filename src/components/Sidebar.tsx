@@ -1,4 +1,4 @@
-import { createMemo, For } from "solid-js";
+import { createMemo, For, onCleanup } from "solid-js";
 import { notes, getAllTags } from "../stores/notesStore";
 import { debounce } from "../utils/debounce";
 
@@ -15,7 +15,9 @@ interface SidebarProps {
 
 export default function Sidebar(props: SidebarProps) {
   const tags = createMemo(() => getAllTags(notes));
+  const pinnedCount = createMemo(() => notes.filter((n) => n.pinned).length);
   const debouncedSearch = debounce((q: string) => props.onSearchChange(q), 200);
+  onCleanup(() => debouncedSearch.cancel());
 
   return (
     <div class="w-52 bg-white border-r border-gray-200 flex flex-col h-full shrink-0">
@@ -57,7 +59,7 @@ export default function Sidebar(props: SidebarProps) {
               "text-gray-600 hover:bg-gray-50": !props.filterPinned,
             }}
           >
-            已置顶 ({notes.filter((n) => n.pinned).length})
+            已置顶 ({pinnedCount()})
           </button>
           <div class="my-1 border-t border-gray-100" />
           <For each={tags()}>

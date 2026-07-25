@@ -1,8 +1,8 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tauri::AppHandle;
 use tauri::Manager;
-use super::validate_id;
+use super::{atomic_write, validate_id};
 
 const MAX_ATTACHMENT_BYTES: usize = 25 * 1024 * 1024; // 25 MB
 
@@ -46,7 +46,35 @@ fn safe_filename(name: &str) -> Option<String> {
     Some(name.to_string())
 }
 
-#[tauri::command]
+/// Pick a non-existing path in `dir` for `name`, appending `-1`, `-2`, …
+/// before the extension on collision. Two pastes named "image.png" must
+/// not silently overwrite each other.
+fn unique_path(dir: &Path, name: &str) -> PathBuf {
+    let candidate = dir.join(name);
+    if !candidate.exists() {
+        return candidate;
+    }
+    let (stem, ext) = match name.rsplit_once('.') {
+        Some((s, e)) if !s.is_empty() => (s, Some(e)),
+        _ => (name, None),
+    };
+    for i in 1..10_000u32 {
+        let n = match ext {
+            Some(e) => format!("{}-{}.{}", stem, i, e),
+            None => format!("{}-{}", stem, i),
+        };
+        let p = dir.join(n);
+        if !p.exists() {
+            return p;
+        }
+    }
+    candidate
+}
+
+// `(async)`: run on the async runtime's thread pool instead of the main
+// thread (a 25 MB fs::write would freeze every window), while the fn stays
+// sync so it can keep the borrowed Request.
+#[tauri::command(async)]
 pub fn save_attachment(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<String, String> {
     let tauri::ipc::InvokeBody::Raw(data) = request.body() else {
         return Err("expected raw request body".into());
@@ -72,18 +100,20 @@ pub fn save_attachment(app: AppHandle, request: tauri::ipc::Request<'_>) -> Resu
         .ok_or_else(|| format!("invalid attachment name: {}", file_name))?;
     let dir = attachments_dir(&app, &note_id)?;
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let path = dir.join(&name);
-    fs::write(&path, data).map_err(|e| e.to_string())?;
+    let path = unique_path(&dir, &name);
+    atomic_write(&path, data)?;
     Ok(path.to_string_lossy().to_string())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn delete_attachment(app: AppHandle, note_id: String, file_name: String) -> Result<(), String> {
     let name = safe_filename(&file_name)
         .ok_or_else(|| format!("invalid attachment name: {}", file_name))?;
     let path = attachments_dir(&app, &note_id)?.join(&name);
-    if path.exists() {
-        fs::remove_file(&path).map_err(|e| e.to_string())?;
+    if let Err(e) = fs::remove_file(&path) {
+        if e.kind() != std::io::ErrorKind::NotFound {
+            return Err(e.to_string());
+        }
     }
     Ok(())
 }

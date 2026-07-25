@@ -1,20 +1,13 @@
 use tauri::{
-    menu::{Menu, MenuItem},
+    menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager,
 };
 
-// Mirror of src/lib/types.ts DEFAULT_NOTE_POSITION. Keep in sync manually
-// when the source-of-truth constant changes.
-const NEW_NOTE_X: f64 = 100.0;
-const NEW_NOTE_Y: f64 = 100.0;
-const NEW_NOTE_W: f64 = 300.0;
-const NEW_NOTE_H: f64 = 240.0;
-
 pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let show = MenuItem::with_id(app, "show", "Show main window", true, None::<&str>)?;
     let new_note = MenuItem::with_id(app, "new_note", "New note", true, None::<&str>)?;
-    let separator = MenuItem::with_id(app, "sep", "", false, None::<&str>)?;
+    let separator = PredefinedMenuItem::separator(app)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
 
     let menu = Menu::with_items(app, &[&show, &new_note, &separator, &quit])?;
@@ -46,34 +39,36 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
                 let app_handle = app.clone();
                 tauri::async_runtime::spawn(async move {
                     let id = uuid::Uuid::new_v4().to_string();
-                    let note = crate::models::Note::new(id.clone());
-                    if let Err(e) = crate::commands::notes::write_note(
-                        app_handle.clone(),
-                        id.clone(),
-                        note,
-                    )
-                    .await
+                    let mut note = crate::models::Note::new(id.clone());
+                    if let Ok(s) = crate::commands::settings::load_settings(&app_handle) {
+                        note.color = s.default_color;
+                    }
+                    let pos = note.position.clone();
+                    if let Err(e) =
+                        crate::commands::notes::persist_note(&app_handle, &id, note, "tray")
                     {
-                        eprintln!("[tray] failed to write new note {}: {}", id, e);
+                        log::error!("[tray] failed to write new note {}: {}", id, e);
                     }
                     if let Err(e) = crate::windows::create_note_window(
                         &app_handle,
                         &id,
-                        NEW_NOTE_X,
-                        NEW_NOTE_Y,
-                        NEW_NOTE_W,
-                        NEW_NOTE_H,
+                        pos.x,
+                        pos.y,
+                        pos.width,
+                        pos.height,
                     ) {
-                        eprintln!("[tray] failed to create note window for {}: {}", id, e);
+                        log::error!("[tray] failed to create note window for {}: {}", id, e);
                     }
                 });
             }
             "quit" => {
-                // Flip the exit flag BEFORE app.exit so lib.rs's on_window_event
-                // does not prevent_close() the main window — otherwise the
-                // process keeps running even after the tray Quit click.
-                *app.state::<crate::AppState>().is_exiting.lock().unwrap() = true;
-                app.exit(0);
+                // Flip the exit flag BEFORE closing anything so lib.rs's
+                // on_window_event does not prevent_close() the main window.
+                // Note windows get a chance to flush pending saves first.
+                app.state::<crate::AppState>()
+                    .is_exiting
+                    .store(true, std::sync::atomic::Ordering::SeqCst);
+                crate::close_notes_and_exit(app);
             }
             _ => {}
         })

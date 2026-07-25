@@ -26,7 +26,7 @@ pub async fn list_notes(app: AppHandle) -> Result<Vec<Note>, String> {
         let entry = match entry {
             Ok(e) => e,
             Err(e) => {
-                eprintln!("[notes] skipping unreadable dir entry: {}", e);
+                log::warn!("[notes] skipping unreadable dir entry: {}", e);
                 continue;
             }
         };
@@ -37,14 +37,14 @@ pub async fn list_notes(app: AppHandle) -> Result<Vec<Note>, String> {
         let content = match fs::read_to_string(&path) {
             Ok(c) => c,
             Err(e) => {
-                eprintln!("[notes] cannot read {}: {}", path.display(), e);
+                log::warn!("[notes] cannot read {}: {}", path.display(), e);
                 continue;
             }
         };
         let note: Note = match serde_json::from_str(&content) {
             Ok(n) => n,
             Err(e) => {
-                eprintln!(
+                log::warn!(
                     "[notes] cannot parse {}: {} — file left on disk for recovery",
                     path.display(),
                     e
@@ -63,23 +63,44 @@ pub async fn read_note(app: AppHandle, id: String) -> Result<Note, String> {
     validate_id(&id)?;
     let dir = ensure_notes_dir(&app)?;
     let path = dir.join(format!("{}.json", id));
-    let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    serde_json::from_str(&content).map_err(|e| e.to_string())
+    let content = fs::read_to_string(&path)
+        .map_err(|e| format!("failed to read note {}: {}", id, e))?;
+    serde_json::from_str(&content).map_err(|e| format!("failed to parse note {}: {}", id, e))
 }
 
-#[tauri::command]
-pub async fn write_note(app: AppHandle, id: String, mut note: Note) -> Result<(), String> {
-    validate_id(&id)?;
+/// Persist a note and broadcast note-updated. `source` identifies the
+/// origin window label ("tray" for tray-created notes) so windows can
+/// ignore echoes of their own saves.
+pub(crate) fn persist_note(
+    app: &AppHandle,
+    id: &str,
+    mut note: Note,
+    source: &str,
+) -> Result<(), String> {
+    validate_id(id)?;
     if note.id != id {
         return Err(format!("note id mismatch: {} != {}", note.id, id));
     }
-    let dir = ensure_notes_dir(&app)?;
+    let dir = ensure_notes_dir(app)?;
     note.updated_at = chrono::Utc::now().to_rfc3339();
     let path = dir.join(format!("{}.json", id));
     let json = serde_json::to_string_pretty(&note).map_err(|e| e.to_string())?;
-    atomic_write(&path, &json)?;
-    let _ = app.emit("note-updated", &note);
+    atomic_write(&path, json.as_bytes())?;
+    let _ = app.emit(
+        "note-updated",
+        serde_json::json!({ "note": note, "source": source }),
+    );
     Ok(())
+}
+
+#[tauri::command]
+pub async fn write_note(
+    app: AppHandle,
+    window: tauri::Window,
+    id: String,
+    note: Note,
+) -> Result<(), String> {
+    persist_note(&app, &id, note, window.label())
 }
 
 #[tauri::command]
@@ -87,14 +108,16 @@ pub async fn delete_note(app: AppHandle, id: String) -> Result<(), String> {
     validate_id(&id)?;
     let dir = ensure_notes_dir(&app)?;
     let path = dir.join(format!("{}.json", id));
-    if path.exists() {
-        fs::remove_file(&path).map_err(|e| e.to_string())?;
+    if let Err(e) = fs::remove_file(&path) {
+        if e.kind() != std::io::ErrorKind::NotFound {
+            return Err(format!("failed to delete note {}: {}", id, e));
+        }
     }
     if let Ok(base) = app.path().app_data_dir() {
         let attachments = base.join("attachments").join(&id);
         if attachments.exists() {
             if let Err(e) = fs::remove_dir_all(&attachments) {
-                eprintln!("[notes] failed to remove attachments for {}: {}", id, e);
+                log::warn!("[notes] failed to remove attachments for {}: {}", id, e);
             }
         }
     }

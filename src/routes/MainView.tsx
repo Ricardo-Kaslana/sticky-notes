@@ -1,5 +1,5 @@
 import { createSignal, createMemo, onMount, onCleanup, Show } from "solid-js";
-import { notes, loadNotes } from "../stores/notesStore";
+import { notes, loadNotes, applyNoteUpdate, removeNoteLocal } from "../stores/notesStore";
 import { settings, loadSettings, saveSettings } from "../stores/settingsStore";
 import { onNoteUpdated, onNoteDeleted } from "../lib/events";
 import { openNoteWindow, writeNote } from "../lib/invoke";
@@ -27,8 +27,8 @@ export default function MainView() {
   // synchronously (before any await) or Solid drops it; the unlisten
   // handles resolve later and are invoked through the promises.
   onMount(() => {
-    const unlistenUpdate = onNoteUpdated(() => loadNotes());
-    const unlistenDelete = onNoteDeleted(() => loadNotes());
+    const unlistenUpdate = onNoteUpdated((note) => applyNoteUpdate(note));
+    const unlistenDelete = onNoteDeleted((id) => removeNoteLocal(id));
     unlistenUpdate.catch((e) =>
       console.error("[MainView] failed to register note-updated listener:", e)
     );
@@ -79,7 +79,6 @@ export default function MainView() {
     try {
       await writeNote(id, note);
       await openNoteWindow(id, position.x, position.y, position.width, position.height);
-      await loadNotes();
       setCreateError(null);
     } catch (e) {
       console.error("[MainView] Failed to create note:", e);

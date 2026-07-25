@@ -10,7 +10,8 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import Trash2 from "lucide-solid/icons/trash-2";
 import type { Note, ColorKey } from "../lib/types";
 import * as api from "../lib/invoke";
-import { emitNoteUpdated } from "../lib/events";
+import { onNoteUpdated, onSettingsChanged } from "../lib/events";
+import { loadSettings } from "../stores/settingsStore";
 import { COLORS, getColorHex } from "../lib/types";
 import NoteToolbar from "../components/NoteToolbar";
 import TagInput from "../components/TagInput";
@@ -28,9 +29,21 @@ export default function NoteView(props: { noteId: string }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = createSignal(false);
   const [editorReady, setEditorReady] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
+  const [notice, setNotice] = createSignal<string | null>(null);
 
   let editorContainer!: HTMLDivElement;
   let editor: Editor | undefined;
+  // Lifecycle flags for the save pipeline.
+  let deleted = false;
+  let saveFailedOnce = false;
+  let pendingSave: Promise<boolean> = Promise.resolve(true);
+  let noticeTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const showNotice = (msg: string) => {
+    setNotice(msg);
+    if (noticeTimer) clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(() => setNotice(null), 5000);
+  };
 
   // Build a Note update object from current editor/signal state
   const buildNoteUpdate = (): Note | null => {
@@ -48,9 +61,11 @@ export default function NoteView(props: { noteId: string }) {
   };
 
   // Save the full current state (including window rect) immediately.
-  const saveNow = async () => {
+  const doSave = async (): Promise<boolean> => {
+    // After deletion, any straggler save would resurrect the file.
+    if (deleted) return true;
     const updated = buildNoteUpdate();
-    if (!updated) return;
+    if (!updated) return true;
     try {
       const win = getCurrentWindow();
       const [pos, size, sf] = await Promise.all([
@@ -69,26 +84,107 @@ export default function NoteView(props: { noteId: string }) {
     } catch (e) {
       console.error("Failed to capture window position:", e);
     }
+    if (deleted) return true;
     try {
       await api.writeNote(updated.id, updated);
-      emitNoteUpdated(updated);
+      setNote(updated);
+      saveFailedOnce = false;
+      return true;
     } catch (e) {
       console.error("Failed to save note:", e);
+      return false;
     }
   };
 
-  // Debounced auto-save. Interval is re-created from settings once loaded.
-  let autoSave = debounce(saveNow, 2000);
+  // Serialize saves: a new save always waits for the in-flight one, so this
+  // window never has two concurrent write_note calls racing on one file.
+  const saveNow = (): Promise<boolean> => {
+    const p = pendingSave.catch(() => false).then(() => doSave());
+    pendingSave = p;
+    return p;
+  };
+
+  // Single debounce instance for the whole component lifetime; the delay is
+  // read through a getter so a settings change never orphans a live timer.
+  let autoSaveDelay = 2000;
+  const autoSave = debounce(saveNow, () => autoSaveDelay);
+
   onMount(() => {
-    api
-      .readSettings()
+    loadSettings()
       .then((s) => {
-        if (s.autoSaveIntervalMs >= 500) {
-          autoSave = debounce(saveNow, s.autoSaveIntervalMs);
-        }
+        if (s.autoSaveIntervalMs >= 500) autoSaveDelay = s.autoSaveIntervalMs;
       })
       .catch((e) => console.error("[NoteView] failed to read settings:", e));
   });
+
+  // Cross-window sync: merge external changes (e.g. the main window's
+  // right-click color change) into local state so the next auto-save does
+  // not overwrite them with a stale snapshot. Own echoes are filtered by
+  // source label; content stays under this editor's authority.
+  onMount(() => {
+    const ownLabel = getCurrentWindow().label;
+    const unlistenUpdate = onNoteUpdated((n, source) => {
+      if (n.id !== props.noteId || source === ownLabel) return;
+      const cur = note();
+      if (!cur) return;
+      setNote({ ...cur, color: n.color, tags: n.tags, pinned: n.pinned, updatedAt: n.updatedAt });
+      setColor(n.color);
+      setTags(n.tags);
+      setPinned(n.pinned);
+    });
+    const unlistenSettings = onSettingsChanged((s) => {
+      if (s.autoSaveIntervalMs >= 500) autoSaveDelay = s.autoSaveIntervalMs;
+    });
+    unlistenUpdate.catch((e) =>
+      console.error("[NoteView] failed to register note-updated listener:", e)
+    );
+    unlistenSettings.catch((e) =>
+      console.error("[NoteView] failed to register settings listener:", e)
+    );
+    onCleanup(() => {
+      unlistenUpdate.then((un) => un()).catch(() => {});
+      unlistenSettings.then((un) => un()).catch(() => {});
+    });
+  });
+
+  // Save-before-close: covers the red button, Alt+F4 and tray Quit (the
+  // backend closes note windows before exiting). Tauri auto-prevents the
+  // close while a JS close-requested listener exists, awaits this handler,
+  // then destroys the window unless preventDefault() was called.
+  onMount(() => {
+    const win = getCurrentWindow();
+    const unlistenClose = win.onCloseRequested(async (event) => {
+      if (deleted) return;
+      autoSave.cancel();
+      const ok = await saveNow();
+      if (!ok) {
+        if (saveFailedOnce) return; // user chose to close anyway
+        saveFailedOnce = true;
+        event.preventDefault();
+        setError("保存失败：内容未写入磁盘。再次点击关闭将放弃本次更改。");
+      }
+    });
+    unlistenClose.catch((e) =>
+      console.error("[NoteView] failed to register close listener:", e)
+    );
+    onCleanup(() => {
+      unlistenClose.then((un) => un()).catch(() => {});
+    });
+  });
+
+  // Insert images one by one so their order matches the selection order,
+  // and surface failures instead of swallowing them.
+  const insertImages = (blobs: Blob[]) => {
+    void (async () => {
+      let failed = 0;
+      for (const blob of blobs) {
+        if (!editor) return;
+        const ok = await insertImageFromBlob(editor, blob, props.noteId);
+        if (!ok) failed++;
+      }
+      if (failed > 0) showNotice(`${failed} 张图片插入失败，请重试。`);
+    })();
+  };
 
   // Create editor after DOM mounts
   onMount(() => {
@@ -121,10 +217,7 @@ export default function NoteView(props: { noteId: string }) {
             }
             if (blobs.length === 0) return false;
             event.preventDefault();
-            if (!editor) return true;
-            for (const blob of blobs) {
-              void insertImageFromBlob(editor, blob, props.noteId);
-            }
+            insertImages(blobs);
             return true;
           },
           handleDrop: (_view, event, _slice, moved) => {
@@ -136,10 +229,7 @@ export default function NoteView(props: { noteId: string }) {
             );
             if (blobs.length === 0) return false;
             event.preventDefault();
-            if (!editor) return true;
-            for (const blob of blobs) {
-              void insertImageFromBlob(editor, blob, props.noteId);
-            }
+            insertImages(blobs);
             return true;
           },
         },
@@ -155,13 +245,20 @@ export default function NoteView(props: { noteId: string }) {
   });
 
   // Load note data: fetch starts immediately (parallel with editor
-  // creation); applying it waits for the editor to be ready.
-  const noteFetch = api.readNote(props.noteId);
+  // creation); applying it waits for the editor to be ready. The catch is
+  // attached at creation so an editor failure can't turn the rejection
+  // into an unhandled one.
+  const noteFetch = api.readNote(props.noteId).catch((e) => {
+    console.error("[NoteView] Failed to load note:", e);
+    setError(`Failed to load note: ${e}`);
+    return null;
+  });
   createEffect(() => {
     const ready = editorReady();
     if (!ready) return;
 
-    noteFetch.then((data) => {
+    void noteFetch.then((data) => {
+      if (!data) return;
       setNote(data);
       setTitle(data.title);
       setTags(data.tags);
@@ -170,33 +267,25 @@ export default function NoteView(props: { noteId: string }) {
       if (editor) {
         editor.commands.setContent(data.content);
       }
-    }).catch((e) => {
-      console.error("[NoteView] Failed to load note:", e);
-      setError(`Failed to load note: ${e}`);
     });
   });
 
   // Cleanup on unmount — flush any pending save so a quit/close that
   // races a debounce does not drop the user's last edits.
   onCleanup(() => {
-    try {
-      autoSave.flush();
-    } catch (e) {
+    autoSave.flush().catch((e) => {
       console.error("[NoteView] flush on cleanup failed:", e);
-    }
+    });
+    if (noticeTimer) clearTimeout(noticeTimer);
     editor?.destroy();
   });
 
-  const handleClose = async () => {
-    // Drop any pending debounced save — saveNow() below writes the latest
-    // snapshot including the final window position.
-    autoSave.cancel();
-    try {
-      await saveNow();
-    } catch (e) {
-      console.error("[NoteView] Failed to save on close:", e);
-    }
-    await api.closeNoteWindow(props.noteId);
+  const handleClose = () => {
+    // The close-requested handler above performs the final save (including
+    // the final window rect) before the window is destroyed.
+    void api.closeNoteWindow(props.noteId).catch((e) => {
+      console.error("[NoteView] Failed to close window:", e);
+    });
   };
 
   const handlePinToggle = async () => {
@@ -213,12 +302,17 @@ export default function NoteView(props: { noteId: string }) {
 
   const handleDelete = async () => {
     setShowDeleteConfirm(false);
-    // A pending debounced save would re-create the file after deletion.
+    // Block new saves, then wait out any in-flight save so it cannot
+    // re-create the file after deletion.
     autoSave.cancel();
+    deleted = true;
+    await pendingSave.catch(() => {});
     try {
       await api.deleteNote(props.noteId);
     } catch (e) {
       console.error("[NoteView] Failed to delete note:", e);
+      deleted = false;
+      setError(`删除失败：${e}`);
       return;
     }
     await api.closeNoteWindow(props.noteId);
@@ -241,6 +335,13 @@ export default function NoteView(props: { noteId: string }) {
       <Show when={error()}>
         <div class="bg-red-100 text-red-700 text-xs p-2 text-center">
           {error()}
+        </div>
+      </Show>
+
+      {/* Transient notice banner */}
+      <Show when={notice()}>
+        <div class="bg-amber-100 text-amber-700 text-xs p-2 text-center">
+          {notice()}
         </div>
       </Show>
 
@@ -315,7 +416,11 @@ export default function NoteView(props: { noteId: string }) {
 
       {/* Toolbar */}
       <div class="px-4">
-        <NoteToolbar editor={editorReady() ? editor ?? null : null} noteId={props.noteId} />
+        <NoteToolbar
+          editor={editorReady() ? editor ?? null : null}
+          noteId={props.noteId}
+          onImageError={showNotice}
+        />
       </div>
 
       {/* Editor */}
@@ -353,4 +458,3 @@ export default function NoteView(props: { noteId: string }) {
     </div>
   );
 }
-

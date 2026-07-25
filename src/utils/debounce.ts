@@ -1,6 +1,6 @@
 export function debounce<Args extends unknown[]>(
   fn: (...args: Args) => unknown,
-  delayMs: number
+  delayMs: number | (() => number)
 ): ((...args: Args) => void) & { cancel: () => void; flush: () => Promise<void> } {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let lastArgs: Args | null = null;
@@ -13,7 +13,7 @@ export function debounce<Args extends unknown[]>(
       const a = lastArgs;
       lastArgs = null;
       if (a) void fn(...a);
-    }, delayMs);
+    }, typeof delayMs === "function" ? delayMs() : delayMs);
   };
   callable.cancel = () => {
     if (timer) clearTimeout(timer);

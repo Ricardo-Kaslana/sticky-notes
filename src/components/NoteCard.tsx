@@ -1,7 +1,7 @@
 import { Note, getColorHex } from "../lib/types";
 import { openNoteWindow, closeNoteWindow, writeNote, readNote } from "../lib/invoke";
 import { deleteNoteById, updateNoteLocal } from "../stores/notesStore";
-import { createSignal, createMemo, Show } from "solid-js";
+import { createSignal, createMemo, Show, For } from "solid-js";
 import ConfirmDialog from "./ConfirmDialog";
 import ColorPicker from "./ColorPicker";
 
@@ -26,7 +26,13 @@ export default function NoteCard(props: NoteCardProps) {
 
   const handleContextMenu = (e: MouseEvent) => {
     e.preventDefault();
-    setMenuPos({ x: e.clientX, y: e.clientY });
+    // Clamp so the menu never overflows the viewport near right/bottom edges.
+    const MENU_W = 160;
+    const MENU_H = 120;
+    setMenuPos({
+      x: Math.min(e.clientX, window.innerWidth - MENU_W),
+      y: Math.min(e.clientY, window.innerHeight - MENU_H),
+    });
     setShowMenu(true);
   };
 
@@ -114,11 +120,13 @@ export default function NoteCard(props: NoteCardProps) {
 
         <Show when={props.note.tags.length > 0}>
           <div class="flex gap-1 mt-2 flex-wrap">
-            {props.note.tags.map((tag) => (
-              <span class="text-[10px] bg-black/5 px-1.5 py-0.5 rounded-full text-gray-500">
-                {tag}
-              </span>
-            ))}
+            <For each={props.note.tags}>
+              {(tag) => (
+                <span class="text-[10px] bg-black/5 px-1.5 py-0.5 rounded-full text-gray-500">
+                  {tag}
+                </span>
+              )}
+            </For>
           </div>
         </Show>
       </div>
