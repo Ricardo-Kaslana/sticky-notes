@@ -6,6 +6,16 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/), 
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- UI polish sweep (design spec 2026-07-26): Tailwind v4 `@theme` design tokens
+  (colors/radii/shadows/font/animations); unified round color swatches via new
+  `ColorSwatchRow`; note windows now tinted with the note color (left accent
+  bar removed); lucide icon toolbar and titlebar dots in note windows; restyled
+  sidebar, cards, context menu, dialogs (custom toggle/select); global thin
+  scrollbars, focus-visible ring, TipTap placeholder now visible.
 
 ## [0.1.6] — 2026-07-25
 
