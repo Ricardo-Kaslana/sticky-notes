@@ -77,7 +77,7 @@ export default function NoteCard(props: NoteCardProps) {
   return (
     <>
       <div
-        class="rounded-lg p-3 cursor-pointer shadow-sm hover:shadow-md transition-shadow relative group"
+        class="break-inside-avoid mb-4 rounded-lg p-3 cursor-pointer shadow-sm hover:shadow-md transition-shadow relative group"
         style={{ background: colorHex() }}
         onDblClick={handleDoubleClick}
         onContextMenu={handleContextMenu}

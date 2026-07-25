@@ -29,6 +29,8 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/), 
 - **NoteCard 改色覆盖浮窗最新内容**：先 `readNote` 取新鲜快照再写回，失败时回滚本地乐观更新。
 - **MainView 事件监听同步注册**：`onCleanup` 在 `await` 前登记，卸载不再泄漏监听器。
 - **托盘写便签调用漏 `.await`**（命令异步化后的编译错误）。
+- **主视图卡片被多列布局切断**：CSS `columns` 布局下卡片未禁止跨列断开，内容稍长即被切成多段。NoteCard 根元素加 `break-inside-avoid`，间距由 `space-y-4` 改为卡片自带 `mb-4`（`space-y` 在多列下会造成首列间距错乱）。
+- **便签窗口拖动区太小**：原先只有头部中间一条细 spacer 可拖动。整个头部横条改为 `data-tauri-drag-region` 并加 `min-h-9`；按钮不受影响（Tauri 仅在 mousedown 目标自身带该属性时启动拖动）。
 
 ### Added
 

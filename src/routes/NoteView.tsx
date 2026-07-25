@@ -244,9 +244,10 @@ export default function NoteView(props: { noteId: string }) {
         </div>
       </Show>
 
-      {/* Header — only the middle spacer is a drag region. Buttons sit outside
-          it so their click events are never consumed by a drag start. */}
-      <div class="flex items-center px-4 pt-3 pb-1">
+      {/* Header — the whole bar is a drag region. Tauri only starts a drag
+          when the mousedown target itself carries the attribute, so clicks on
+          the child buttons are never consumed by a drag start. */}
+      <div class="flex items-center px-4 pt-3 pb-1 min-h-9" data-tauri-drag-region>
         <div class="flex gap-2">
           <button
             onClick={handlePinToggle}
