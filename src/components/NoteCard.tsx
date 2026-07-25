@@ -4,6 +4,12 @@ import { deleteNoteById, updateNoteLocal } from "../stores/notesStore";
 import { createSignal, createMemo, Show, For } from "solid-js";
 import ConfirmDialog from "./ConfirmDialog";
 import ColorPicker from "./ColorPicker";
+// Deep imports: the "lucide-solid" barrel pulls ~3500 icon modules in dev.
+import Pin from "lucide-solid/icons/pin";
+import ExternalLink from "lucide-solid/icons/external-link";
+import Palette from "lucide-solid/icons/palette";
+import Trash2 from "lucide-solid/icons/trash-2";
+import { DELETE_NOTE_CONFIRM } from "../lib/uiText";
 
 interface NoteCardProps {
   note: Note;
@@ -83,14 +89,14 @@ export default function NoteCard(props: NoteCardProps) {
   return (
     <>
       <div
-        class="break-inside-avoid mb-4 rounded-lg p-3 cursor-pointer shadow-sm hover:shadow-md transition-shadow relative group"
+        class="break-inside-avoid mb-4 rounded-md p-3 cursor-pointer shadow-card hover:shadow-pop hover:-translate-y-px transition-[box-shadow,transform] duration-150 relative group"
         style={{ background: colorHex() }}
         onDblClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
       >
         {/* Pin indicator */}
         <Show when={props.note.pinned}>
-          <div class="absolute top-1 right-1 text-gray-400 text-xs">📌</div>
+          <Pin size={12} class="absolute top-1.5 right-1.5 text-ink/40" />
         </Show>
 
         {/* Inline color picker (toggled by right-click → "Change color") */}
@@ -110,11 +116,11 @@ export default function NoteCard(props: NoteCardProps) {
           </div>
         </Show>
 
-        <h3 class="font-semibold text-sm mb-1 truncate text-gray-800">
+        <h3 class="font-semibold text-sm mb-1 truncate text-ink">
           {props.note.title || "无标题"}
         </h3>
 
-        <p class="text-xs text-gray-600 line-clamp-3 leading-relaxed">
+        <p class="text-xs text-ink-muted line-clamp-3 leading-relaxed">
           {preview()}
         </p>
 
@@ -122,7 +128,7 @@ export default function NoteCard(props: NoteCardProps) {
           <div class="flex gap-1 mt-2 flex-wrap">
             <For each={props.note.tags}>
               {(tag) => (
-                <span class="text-[10px] bg-black/5 px-1.5 py-0.5 rounded-full text-gray-500">
+                <span class="text-[10px] bg-black/10 px-1.5 py-0.5 rounded-full text-ink-muted">
                   {tag}
                 </span>
               )}
@@ -138,29 +144,32 @@ export default function NoteCard(props: NoteCardProps) {
           onClick={() => setShowMenu(false)}
         />
         <div
-          class="fixed z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-36 text-sm"
+          class="fixed z-50 bg-panel rounded-md shadow-pop border border-line py-1 min-w-36 text-sm animate-fade-in"
           style={{ left: `${menuPos().x}px`, top: `${menuPos().y}px` }}
         >
           <button
-            class="w-full text-left px-3 py-1.5 hover:bg-gray-50 text-gray-700"
+            class="w-full text-left px-3 py-1.5 hover:bg-neutral-50 text-ink flex items-center gap-2"
             onClick={handlePopOut}
           >
+            <ExternalLink size={14} class="text-ink-muted" />
             弹出窗口
           </button>
           <button
-            class="w-full text-left px-3 py-1.5 hover:bg-gray-50 text-gray-700"
+            class="w-full text-left px-3 py-1.5 hover:bg-neutral-50 text-ink flex items-center gap-2"
             onClick={() => {
               setShowMenu(false);
               setShowColorPicker(true);
             }}
           >
+            <Palette size={14} class="text-ink-muted" />
             更换颜色
           </button>
-          <div class="border-t border-gray-100 my-0.5" />
+          <div class="border-t border-line my-0.5" />
           <button
-            class="w-full text-left px-3 py-1.5 hover:bg-red-50 text-red-600"
+            class="w-full text-left px-3 py-1.5 hover:bg-red-50 text-red-600 flex items-center gap-2"
             onClick={() => { setShowConfirm(true); }}
           >
+            <Trash2 size={14} />
             删除
           </button>
         </div>
@@ -168,7 +177,7 @@ export default function NoteCard(props: NoteCardProps) {
 
       <Show when={showConfirm()}>
         <ConfirmDialog
-          message="删除这条便签？此操作无法撤销。"
+          message={DELETE_NOTE_CONFIRM}
           onConfirm={handleDelete}
           onCancel={() => setShowConfirm(false)}
         />

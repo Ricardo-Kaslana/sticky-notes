@@ -113,7 +113,11 @@ export default function MainView() {
           onCreateNote={handleCreateNote}
           onOpenSettings={() => setShowSettings(true)}
         />
-        <MasonryGrid notes={filteredNotes()} hasAnyNotes={notes.length > 0} />
+        <MasonryGrid
+          notes={filteredNotes()}
+          hasAnyNotes={notes.length > 0}
+          onCreateNote={handleCreateNote}
+        />
       </div>
       <Show when={showSettings()}>
         <SettingsDialog

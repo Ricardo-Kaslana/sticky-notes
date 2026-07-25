@@ -1,4 +1,5 @@
-import { COLORS, type ColorKey } from "../lib/types";
+import type { ColorKey } from "../lib/types";
+import ColorSwatchRow from "./ColorSwatchRow";
 
 interface ColorPickerProps {
   selected: ColorKey;
@@ -7,19 +8,8 @@ interface ColorPickerProps {
 
 export default function ColorPicker(props: ColorPickerProps) {
   return (
-    <div class="flex gap-2 p-2 bg-white rounded-lg shadow-lg border border-gray-200">
-      {COLORS.map((c) => (
-        <button
-          onClick={() => props.onChange(c.key)}
-          class="w-6 h-6 rounded-full border-2 transition-transform hover:scale-110"
-          classList={{
-            "border-gray-900": props.selected === c.key,
-            "border-transparent": props.selected !== c.key,
-          }}
-          style={{ background: c.hex }}
-          title={c.name}
-        />
-      ))}
+    <div class="p-2 bg-panel rounded-md shadow-pop border border-line animate-fade-in">
+      <ColorSwatchRow selected={props.selected} onSelect={props.onChange} />
     </div>
   );
 }
