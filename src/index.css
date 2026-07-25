@@ -1,23 +1,60 @@
 @import "tailwindcss";
 
+@theme {
+  --color-surface: #fafafa;
+  --color-panel: #ffffff;
+  --color-ink: #262626;
+  --color-ink-muted: #737373;
+  --color-line: #e5e5e5;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --shadow-card: 0 1px 2px rgb(28 25 23 / 0.06), 0 1px 3px rgb(28 25 23 / 0.08);
+  --shadow-pop: 0 2px 4px rgb(28 25 23 / 0.06), 0 4px 12px rgb(28 25 23 / 0.1);
+  --shadow-modal: 0 4px 8px rgb(28 25 23 / 0.08), 0 12px 32px rgb(28 25 23 / 0.16);
+
+  --font-sans: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+
+  --animate-fade-in: fade-in 120ms ease-out;
+  --animate-scale-in: scale-in 150ms ease-out;
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+  }
+}
+
 /* Full-height chain — required by h-full in floating note windows */
 html, body, #root {
   height: 100%;
 }
 
-/* Custom scrollbar for sidebar */
-.sidebar-scroll::-webkit-scrollbar {
+/* Thin scrollbars everywhere (WebView2 is Chromium-based) */
+::-webkit-scrollbar {
   width: 4px;
+  height: 4px;
 }
-.sidebar-scroll::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+::-webkit-scrollbar-thumb {
+  background: var(--color-line);
   border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #c9c9c9;
+}
+
+/* Unified keyboard-focus ring */
+:focus-visible {
+  outline: 2px solid rgb(38 38 38 / 0.4);
+  outline-offset: 2px;
 }
 
 /* Floating note window styles */
-.note-window {
-  font-family: "Segoe UI", system-ui, sans-serif;
-}
 .note-window .ProseMirror {
   outline: none;
   min-height: 120px;
@@ -29,4 +66,13 @@ html, body, #root {
 .note-window .ProseMirror ol {
   padding-left: 16px;
   margin: 4px 0;
+}
+/* TipTap Placeholder extension marks the empty first paragraph with
+   .is-empty + data-placeholder; without this rule it never renders. */
+.note-window .ProseMirror p.is-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: rgb(0 0 0 / 0.3);
+  float: left;
+  height: 0;
+  pointer-events: none;
 }

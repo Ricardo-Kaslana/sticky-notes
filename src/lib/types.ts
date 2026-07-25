@@ -23,19 +23,25 @@ export interface ColorDef {
   key: ColorKey;
   name: string;
   hex: string;
+  /** Darker sibling used for swatch borders on light surfaces. */
+  deepHex: string;
 }
 
 export const COLORS: ColorDef[] = [
-  { key: "paper", name: "Paper", hex: "#fff9c4" },
-  { key: "blush", name: "Blush", hex: "#f8bbd0" },
-  { key: "sky", name: "Sky", hex: "#b3e5fc" },
-  { key: "sage", name: "Sage", hex: "#c8e6c9" },
-  { key: "apricot", name: "Apricot", hex: "#ffe0b2" },
-  { key: "lavender", name: "Lavender", hex: "#d1c4e9" },
+  { key: "paper", name: "Paper", hex: "#fff9c4", deepHex: "#e8d972" },
+  { key: "blush", name: "Blush", hex: "#f8bbd0", deepHex: "#e991ae" },
+  { key: "sky", name: "Sky", hex: "#b3e5fc", deepHex: "#7bc8ec" },
+  { key: "sage", name: "Sage", hex: "#c8e6c9", deepHex: "#94cf98" },
+  { key: "apricot", name: "Apricot", hex: "#ffe0b2", deepHex: "#f2bc73" },
+  { key: "lavender", name: "Lavender", hex: "#d1c4e9", deepHex: "#a893d6" },
 ];
 
 export function getColorHex(key: ColorKey): string {
   return COLORS.find((c) => c.key === key)?.hex ?? "#fff9c4";
+}
+
+export function getColorDeepHex(key: ColorKey): string {
+  return COLORS.find((c) => c.key === key)?.deepHex ?? "#e8d972";
 }
 
 export interface Settings {
