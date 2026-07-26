@@ -54,7 +54,9 @@ pub async fn list_notes(app: AppHandle) -> Result<Vec<Note>, String> {
         };
         notes.push(note);
     }
-    notes.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+    // No sort here: the frontend (filterNotes / MainView memo) already sorts
+    // by updatedAt desc, and MainView's reconcile diff is order-sensitive —
+    // a backend sort would only add a redundant O(N log N) pass.
     Ok(notes)
 }
 

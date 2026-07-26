@@ -77,10 +77,9 @@ export default function NoteCard(props: NoteCardProps) {
     }
   };
 
-  // DOMParser never loads resources nor fires event handlers, unlike
-  // assigning innerHTML on a detached element.
-  const stripHtml = (html: string) =>
-    new DOMParser().parseFromString(html, "text/html").body.textContent || "";
+  // Cheaper than DOMParser: a regex tag-strip is enough for a 3-line preview
+  // and avoids constructing a full DOM tree per card on every render pass.
+  const stripHtml = (html: string) => html.replace(/<[^>]*>/g, " ").trim();
 
   const preview = createMemo(() => stripHtml(props.note.content));
 

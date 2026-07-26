@@ -8,6 +8,11 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/), 
 
 ## [Unreleased]
 
+### Performance
+
+- **`list_notes` 去掉冗余 sort**：后端不再对返回的便签列表按 `updatedAt` 排序。前端 `filterNotes` 已对结果 `sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))`，后端的 O(N log N) 是纯重复功。`test_note_sort_order` 单元测试仍覆盖排序逻辑本身，未受影响。
+- **`NoteCard` 预览剥离用正则替代 `DOMParser`**：每张卡渲染时不再 `new DOMParser().parseFromString(...)` 构造完整 DOM 树，改用 `html.replace(/<[^>]*>/g, " ").trim()`。N=500 卡片时省 500 次 DOMParser 实例化，主视图首次渲染快数十毫秒，少分配 N 个临时 DOM 文档。`filterNotes.ts:11` 已用同一正则策略，行为一致。
+
 ### Changed
 
 - UI polish sweep (design spec 2026-07-26): Tailwind v4 `@theme` design tokens
