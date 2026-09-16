@@ -54,18 +54,20 @@ html, body, #root {
   outline-offset: 2px;
 }
 
-/* Floating note window styles */
+/* Floating note window styles.
+   Sizes are in rem on purpose: the note window zooms by changing the root
+   font size (see src/lib/zoom.ts), so anything in px would refuse to scale. */
 .note-window .ProseMirror {
   outline: none;
-  min-height: 120px;
+  min-height: 7.5rem;
 }
 .note-window .ProseMirror p {
-  margin: 0 0 4px 0;
+  margin: 0 0 0.25rem 0;
 }
 .note-window .ProseMirror ul,
 .note-window .ProseMirror ol {
-  padding-left: 16px;
-  margin: 4px 0;
+  padding-left: 1rem;
+  margin: 0.25rem 0;
 }
 /* TipTap Placeholder extension marks the empty first paragraph with
    .is-empty + data-placeholder; without this rule it never renders. */

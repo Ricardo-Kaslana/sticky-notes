@@ -13,7 +13,7 @@ interface MasonryGridProps {
 
 export default function MasonryGrid(props: MasonryGridProps) {
   return (
-    <div class="flex-1 overflow-y-auto p-5">
+    <div class="flex-1 overflow-y-auto px-5 pb-5 pt-3 min-h-0">
       <div class="columns-2 md:columns-3 lg:columns-4 gap-4">
         <For each={props.notes}>
           {(note) => <NoteCard note={note} />}

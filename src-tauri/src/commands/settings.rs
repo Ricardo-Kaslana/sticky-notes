@@ -2,7 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_autostart::ManagerExt;
-use crate::models::{Settings, COLOR_KEYS};
+use crate::models::{Settings, COLOR_KEYS, NOTE_ZOOM_MAX, NOTE_ZOOM_MIN, SORT_BY_KEYS, SORT_DIR_KEYS};
 use super::atomic_write;
 
 fn settings_path(app: &AppHandle) -> Result<PathBuf, String> {
@@ -73,6 +73,18 @@ pub async fn write_settings(app: AppHandle, mut settings: Settings) -> Result<()
     }
     // 0 would turn the frontend auto-save debounce into a busy loop.
     settings.auto_save_interval_ms = settings.auto_save_interval_ms.clamp(500, 3_600_000);
+    if !SORT_BY_KEYS.contains(&settings.sort_by.as_str()) {
+        return Err(format!("invalid sort key: {}", settings.sort_by));
+    }
+    if !SORT_DIR_KEYS.contains(&settings.sort_dir.as_str()) {
+        return Err(format!("invalid sort direction: {}", settings.sort_dir));
+    }
+    // Reject NaN before clamping: `f64::clamp` propagates NaN, and a NaN
+    // would then fail (or silently null) in serde_json on the way out.
+    if !settings.note_zoom.is_finite() {
+        return Err(format!("invalid note zoom: {}", settings.note_zoom));
+    }
+    settings.note_zoom = settings.note_zoom.clamp(NOTE_ZOOM_MIN, NOTE_ZOOM_MAX);
     let path = settings_path(&app)?;
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;

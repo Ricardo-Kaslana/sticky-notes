@@ -78,7 +78,7 @@ export default function TagInput(props: TagInputProps) {
                 class="text-ink/40 hover:text-ink transition-colors"
                 aria-label={`删除标签 ${tag}`}
               >
-                <X size={10} />
+                <X class="w-2.5 h-2.5" />
               </button>
             </span>
           )}

@@ -1,13 +1,19 @@
 import { createSignal, createMemo, onMount, onCleanup, Show } from "solid-js";
 import { notes, loadNotes, applyNoteUpdate, removeNoteLocal } from "../stores/notesStore";
-import { settings, loadSettings, saveSettings } from "../stores/settingsStore";
-import { onNoteUpdated, onNoteDeleted } from "../lib/events";
+import {
+  settings,
+  loadSettings,
+  saveSettings,
+  applySettings,
+} from "../stores/settingsStore";
+import { onNoteUpdated, onNoteDeleted, onSettingsChanged } from "../lib/events";
 import { openNoteWindow, writeNote } from "../lib/invoke";
 import { filterNotes } from "../lib/filterNotes";
 import Sidebar from "../components/Sidebar";
+import SortBar from "../components/SortBar";
 import MasonryGrid from "../components/MasonryGrid";
 import SettingsDialog from "../components/SettingsDialog";
-import { DEFAULT_NOTE_POSITION, Note } from "../lib/types";
+import { DEFAULT_NOTE_POSITION, Note, type SortBy } from "../lib/types";
 // Deep import: the "lucide-solid" barrel pulls ~3500 icon modules in dev.
 import AlertCircle from "lucide-solid/icons/alert-circle";
 
@@ -31,15 +37,22 @@ export default function MainView() {
   onMount(() => {
     const unlistenUpdate = onNoteUpdated((note) => applyNoteUpdate(note));
     const unlistenDelete = onNoteDeleted((id) => removeNoteLocal(id));
+    // Note windows write settings too (zoom), so this window must adopt the
+    // broadcast or its next save would write back a stale zoom/sort pair.
+    const unlistenSettings = onSettingsChanged((s) => applySettings(s));
     unlistenUpdate.catch((e) =>
       console.error("[MainView] failed to register note-updated listener:", e)
     );
     unlistenDelete.catch((e) =>
       console.error("[MainView] failed to register note-deleted listener:", e)
     );
+    unlistenSettings.catch((e) =>
+      console.error("[MainView] failed to register settings listener:", e)
+    );
     onCleanup(() => {
       unlistenUpdate.then((un) => un()).catch(() => {});
       unlistenDelete.then((un) => un()).catch(() => {});
+      unlistenSettings.then((un) => un()).catch(() => {});
     });
   });
 
@@ -48,8 +61,21 @@ export default function MainView() {
       query: searchQuery(),
       tag: selectedTag(),
       pinnedOnly: filterPinned(),
+      sortBy: settings().sortBy,
+      sortDir: settings().sortDir,
     })
   );
+
+  // Sort preferences live in settings.json, so they survive a restart and
+  // stay consistent with whatever the settings dialog shows.
+  const persistSort = (patch: { sortBy?: SortBy; sortDir?: "asc" | "desc" }) => {
+    saveSettings({ ...settings(), ...patch }).catch((e) =>
+      console.error("[MainView] failed to save sort preference:", e)
+    );
+  };
+
+  const toggleSortDir = () =>
+    persistSort({ sortDir: settings().sortDir === "asc" ? "desc" : "asc" });
 
   const [createError, setCreateError] = createSignal<string | null>(null);
   let creating = false;
@@ -113,11 +139,21 @@ export default function MainView() {
           onCreateNote={handleCreateNote}
           onOpenSettings={() => setShowSettings(true)}
         />
-        <MasonryGrid
-          notes={filteredNotes()}
-          hasAnyNotes={notes.length > 0}
-          onCreateNote={handleCreateNote}
-        />
+        <div class="flex-1 flex flex-col min-w-0">
+          <SortBar
+            sortBy={settings().sortBy}
+            sortDir={settings().sortDir}
+            onSortByChange={(v) => persistSort({ sortBy: v })}
+            onSortDirToggle={toggleSortDir}
+            shownCount={filteredNotes().length}
+            totalCount={notes.length}
+          />
+          <MasonryGrid
+            notes={filteredNotes()}
+            hasAnyNotes={notes.length > 0}
+            onCreateNote={handleCreateNote}
+          />
+        </div>
       </div>
       <Show when={showSettings()}>
         <SettingsDialog

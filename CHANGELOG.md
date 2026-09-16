@@ -8,6 +8,51 @@
 
 ---
 
+## [未发布] — 2026-09-17
+
+排序、时间显示、便签缩放，以及编辑界面的分区重构。版本号尚未提升（仍在 0.1.7 之后）。
+
+### 新增
+
+- **便签排序**（`components/SortBar.tsx` + `lib/sortNotes.ts`）—— 主视图网格上方新增排序栏：
+  - 排序键三选一：**修改时间 / 创建时间 / 标题**；方向按钮在**升序 / 降序**之间切换（升序 A→Z / 旧→新）。
+  - 排序偏好写入 `settings.json`（`sortBy` / `sortDir`），重启后保持。
+  - 标题排序使用 `Intl.Collator("zh-Hans-CN", { numeric: true, sensitivity: "base" })`：中文按拼音（北京 → 广州 → 上海）、`便签 2` 排在 `便签 10` 前、大小写与变音不敏感。CLDR 的 zh 排序把汉字整体排在拉丁字母之前，这是有意保留的行为。
+  - **空标题恒定沉底**，与升/降序无关 —— 否则升序会以一片「无标题」开头，把真正的标题埋掉。
+  - 同键用 `id` 做稳定 tiebreak，输出与输入数组顺序无关（`list_notes` 返回的是 OS 目录序，本身没有意义）。
+  - 排序栏同时显示「共 N 条便签 · 显示 M 条」，筛选生效时能看出被过滤掉多少。
+- **便签显示创建时间与修改时间**（`lib/formatTime.ts`）—— `NoteCard` 底部时间行（`创建 2026-09-17 00:34` / `修改 2026-09-17 00:41`），便签浮窗标题下方一行同款信息。时间用本地时区 `YYYY-MM-DD HH:mm`；无法解析的值渲染为空而不是 `Invalid Date`。
+- **便签浮窗缩放**（`lib/zoom.ts` + `components/ZoomControl.tsx`）—— 标题栏右侧 `− 100% +` 控件、`Ctrl+=` / `Ctrl+-` / `Ctrl+0` 快捷键、`Ctrl+滚轮` 连续缩放，范围 75%–200%（离散档位 75/85/100/115/130/150/175/200）。
+  - 实现方式是改 `document.documentElement.style.fontSize`，所有 rem 系的 Tailwind 工具类随之等比缩放 —— 文字、内边距、图标一起变大，而不是文字撑破固定尺寸的盒子。
+  - 配套把便签浮窗内所有 px 尺寸改成 rem：lucide 图标从 `size={N}`（会输出 px 的 `width`/`height` 属性，不随缩放变化）改成 rem class（`w-4 h-4`、`w-[0.5625rem]`），`index.css` 里 `.note-window` 的 `min-height` / `padding-left` / `margin` 由 px 改 rem。主窗口不做缩放，保持 `size={N}` 不变。
+  - 比例存 `settings.noteZoom`，经 `settings-changed` 广播，所有便签浮窗同步；落盘做 400ms 防抖，避免滚轮手势触发几十次写盘 + 广播。
+- **便签浮窗八向拖拽缩放**（`components/ResizeHandles.tsx`）—— 窗口是 `decorations(false)`，Windows 的原生缩放边框是看不见的几个像素，用户找不到。现在四边 + 四角都有热区（右下角带可见的斜纹抓手），通过 `startResizeDragging` 把拖拽交给系统，保留贴边吸附等原生行为。新增权限 `core:window:allow-start-resize-dragging`。
+- `Settings` 新增三个字段：`sortBy` / `sortDir` / `noteZoom`。
+
+### 变更
+
+- **便签浮窗编辑界面重构为三块独立面板**（`routes/NoteView.tsx`）—— 工具栏、正文、标签各自成块，每块带浅色底 + 1px 描边 + 圆角 + 顶部「格式 / 内容 / 标签」分区标题条：
+  - 工具栏从「贴在正文上方的一排按钮」变成明确的 chrome 面板；正文区改为纸白色（`bg-white/65`）内嵌面板，是唯一会伸缩的区域，也是唯一明显「可以在这里打字」的区域；标签区再次独立成块，标签不会再被误读成正文。
+  - 标题与时间行独立于三块面板之外，层级清晰。
+  - 所有区块统一 12px 边距（原来标题区 16px、面板 12px 混用）。
+- **`filterNotes` 不再自己排序**，委托给 `sortNotes`。`FilterOpts` 的 `sortBy` / `sortDir` 可选，缺省 `updatedAt` / `desc` —— 不传时的结果与改动前一致。
+- **新建便签默认窗口尺寸 300×240 → 340×320** —— 新增的分区面板与标题条吃掉了纵向空间，240px 高的窗口里正文只剩几十像素。`lib/types.ts` 的 `DEFAULT_NOTE_POSITION` 与 `models.rs` 的 `NotePosition::default()` 两处同步（Rust 侧新增用例锁住数值）。
+- **`settingsStore` 增加 `normalizeSettings` / `applySettings` / `patchSettingsLocal`** —— 排序切换和缩放必须同帧反馈，`saveSettings` 改为先更新内存信号再落盘；`normalizeSettings` 把磁盘上的缺字段 / 脏数据收敛成可用值，保证不会出现「无法排序」或「0% 缩放」。
+- **`MainView` 现在也监听 `settings-changed`** —— 浮窗写缩放后会广播，主窗口若仍持陈旧快照，下次切换排序就会把 `noteZoom` 回写旧值。`NoteView` 的同一个监听也从「只读 `autoSaveIntervalMs`」改为 `applySettings`，理由相同。
+- **`Settings` 的三个新字段都带 `#[serde(default = "...")]`** —— `load_settings` 把解析失败当损坏处理（改名 `.json.bak` + 回落默认值），旧版 `settings.json` 缺这三个键必须仍能解析，否则用户会静默丢掉全部设置。
+
+### 移除
+
+- **明确不做「访问时间」相关的任何功能** —— 不新增 `accessedAt` / `lastOpenedAt` / 访问计数，不提供按访问时间排序，也不显示访问时间。便签只有创建时间与修改时间两个时间戳；按访问时间排序会让网格仅仅因为「被打开看过」就自己重排。已在 `AGENTS.md` 硬规则第 9 条写死。
+
+### 测试
+
+- 前端 67/67（8 个文件）：新增 `sortNotes` 13 例（三种键 × 两个方向、跨 Rust/JS 两种 RFC3339 写法、拼音排序、空标题沉底、id tiebreak、不改动入参、非法时间戳、空数组）、`zoom` 11 例、`formatTime` 5 例；`filterNotes` 新增 4 例排序用例，并把 fixture 的 `updatedAt` 改成互不相同 —— 原来四条数据时间戳全部并列，那几条断言实际只在测输入数组顺序，不是排序。
+- Rust 16/16：新增 `Settings` 默认值、旧版 `settings.json` 兼容解析、camelCase 键名、`NotePosition` 默认尺寸 4 例。
+- `tsc --noEmit` 干净。
+
+---
+
 ## [0.1.7] — 2026-09-17
 
 UI 美化 sweep（依据 2026-07-26 设计规格）与随后的性能微调，是 0.1.6 之后积累的全部改动。

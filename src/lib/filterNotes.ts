@@ -1,9 +1,15 @@
-import type { Note } from "./types";
+import type { Note, SortBy, SortDir } from "./types";
+import { DEFAULT_SORT_BY, DEFAULT_SORT_DIR } from "./types";
+import { sortNotes } from "./sortNotes";
 
 export interface FilterOpts {
   query: string;
   tag: string;
   pinnedOnly: boolean;
+  /** Defaults to `DEFAULT_SORT_BY` (updatedAt). */
+  sortBy?: SortBy;
+  /** Defaults to `DEFAULT_SORT_DIR` (desc). */
+  sortDir?: SortDir;
 }
 
 // Regex strip is enough for search purposes and keeps this module free of
@@ -26,16 +32,20 @@ export function filterNotes(notes: Note[], opts: FilterOpts): Note[] {
   const q = opts.query.trim().toLowerCase();
   const t = opts.tag.toLowerCase();
 
-  return notes
-    .filter((n) => {
-      if (q) {
-        if (!searchText(n).includes(q)) return false;
-      }
-      if (t) {
-        if (!n.tags.some((tag) => tag.toLowerCase() === t)) return false;
-      }
-      if (opts.pinnedOnly && !n.pinned) return false;
-      return true;
-    })
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const matched = notes.filter((n) => {
+    if (q) {
+      if (!searchText(n).includes(q)) return false;
+    }
+    if (t) {
+      if (!n.tags.some((tag) => tag.toLowerCase() === t)) return false;
+    }
+    if (opts.pinnedOnly && !n.pinned) return false;
+    return true;
+  });
+
+  return sortNotes(
+    matched,
+    opts.sortBy ?? DEFAULT_SORT_BY,
+    opts.sortDir ?? DEFAULT_SORT_DIR
+  );
 }

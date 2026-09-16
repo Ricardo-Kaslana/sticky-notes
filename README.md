@@ -10,10 +10,14 @@ A lightweight, high-performance, modern minimalist sticky-notes desktop app for 
 ## Features
 
 - **Masonry grid management view** — sidebar search, tag filter (with live counts), pinned-only filter
+- **Sorting** — by modified time, created time, or title, ascending or descending; the choice is remembered across restarts
+- **Timestamps on every note** — creation and modification time, shown on both the grid card and the floating window. There is no "last accessed" notion anywhere in the app
 - **Borderless floating note windows** — drag from anywhere, TipTap rich text, color & tag editing, pin-on-top
+- **Zoom and resize** — `− 100% +` in the title bar, `Ctrl` `+` / `-` / `0`, or `Ctrl`+scroll scales the content; drag any edge or corner to resize the window
+- **Layered editor** — the floating window separates toolbar, body text, and tags into three labelled panels
 - **System tray** — left-click reveals main window; menu has Show / New note / Quit
 - **Auto-save** — debounced save on every keystroke (interval configurable in Settings); close the window, reopen, content is there
-- **Settings** — default note color, auto-save interval, close-to-tray behavior (sidebar → 设置)
+- **Settings** — default note color, auto-save interval, close-to-tray behavior (sidebar → 设置); sort order and zoom persist in the same file
 - **Cross-window sync** — edits in a floating window refresh the management view instantly
 - **Six pastel colors** — `paper` / `blush` / `sky` / `sage` / `apricot` / `lavender`, set per-note
 - **Image paste / drop / insert via toolbar** — Ctrl+V, drag a file, or use the toolbar image button. Saved to `attachments/<uuid>/` and rendered as an inline `<img>` via `asset://`.
@@ -87,11 +91,12 @@ sticky-notes/
 ├── src/                        SolidJS frontend
 │   ├── index.tsx               Entry + manual Switch/Match routing
 │   ├── routes/
-│   │   ├── MainView.tsx        / — sidebar + masonry grid
+│   │   ├── MainView.tsx        / — sidebar + sort bar + masonry grid
 │   │   └── NoteView.tsx        /note/:id — TipTap editor in floating window
-│   ├── components/             Sidebar, NoteCard, MasonryGrid, TagInput, ...
+│   ├── components/             Sidebar, SortBar, NoteCard, MasonryGrid, TagInput, ...
 │   ├── stores/notesStore.ts    SolidJS store — single source of truth
-│   ├── lib/                    types, invoke, events
+│   ├── stores/settingsStore.ts Settings signal + normalisation of disk values
+│   ├── lib/                    types, invoke, events, filterNotes, sortNotes, formatTime, zoom
 │   └── utils/debounce.ts
 │
 ├── docs/archive/               Historical design specs + plans (reference only)
@@ -130,6 +135,12 @@ Each floating note is its own Tauri webview window. The note ID reaches the fron
 
 ### Window state persistence
 On every auto-save, the floating window reads `getCurrentWindow().outerPosition()` and `.outerSize()`, divides both by `scaleFactor()`, and stores the result in `note.position`. On reopen, those values are passed to `open_note_window` so the window appears exactly where the user left it.
+
+### Sorting and timestamps
+Ordering is decided in exactly one place — `src/lib/sortNotes.ts` — and applied after filtering. Notes carry only `createdAt` and `updatedAt`: there is no access-time field and no sort key that depends on opening a note, so the grid never reorders itself as a side effect of reading. The sort key and direction are stored in `settings.json` alongside the other preferences. Title sorting uses a `zh-Hans-CN` collator (pinyin order, natural number order, case-insensitive) and always sinks untitled notes to the bottom.
+
+### Note zoom
+Zoom scales the document root font size instead of applying a CSS transform, so every rem-based Tailwind utility — text, padding, icons — grows together and layout still reflows normally. That is why sizes inside the note window are written in rem, including icon sizes: lucide's `size` prop emits px `width`/`height` attributes and would silently ignore the zoom. Window resizing is a separate gesture — `ResizeHandles` hands the drag to the OS via `startResizeDragging`, which is what keeps native snapping on a borderless window.
 
 ### Main window → tray
 By default, closing the main window calls `prevent_close()` + `hide()` in `lib.rs` — the app stays alive in the tray with floating note windows intact, and only the tray's **Quit** menu item calls `app.exit(0)`. Turning off "close to tray" in Settings makes the close button quit the app instead.

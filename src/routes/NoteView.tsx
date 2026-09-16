@@ -1,4 +1,4 @@
-import { createSignal, createEffect, Show, onMount, onCleanup } from "solid-js";
+import { createSignal, createEffect, Show, onMount, onCleanup, type JSX } from "solid-js";
 import { Editor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -10,18 +10,39 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import Trash2 from "lucide-solid/icons/trash-2";
 import Pin from "lucide-solid/icons/pin";
 import X from "lucide-solid/icons/x";
+import Calendar from "lucide-solid/icons/calendar";
+import CalendarClock from "lucide-solid/icons/calendar-clock";
 import type { Note, ColorKey } from "../lib/types";
 import * as api from "../lib/invoke";
 import { onNoteUpdated, onSettingsChanged } from "../lib/events";
-import { loadSettings } from "../stores/settingsStore";
+import {
+  settings,
+  loadSettings,
+  saveSettings,
+  applySettings,
+  patchSettingsLocal,
+} from "../stores/settingsStore";
 import { getColorHex, getColorDeepHex } from "../lib/types";
 import ColorSwatchRow from "../components/ColorSwatchRow";
 import { DELETE_NOTE_CONFIRM } from "../lib/uiText";
+import { formatDateTime } from "../lib/formatTime";
+import { NOTE_ZOOM_DEFAULT, clampZoom, rootFontSizePx, stepZoom } from "../lib/zoom";
 import NoteToolbar from "../components/NoteToolbar";
 import TagInput from "../components/TagInput";
 import ConfirmDialog from "../components/ConfirmDialog";
+import ResizeHandles from "../components/ResizeHandles";
+import ZoomControl from "../components/ZoomControl";
 import { debounce } from "../utils/debounce";
 import { insertImageFromBlob } from "../lib/insertImageFromBlob";
+
+/** Shared header strip that labels one region of the editor. */
+function PanelLabel(props: { children: JSX.Element }) {
+  return (
+    <div class="flex items-center gap-1 px-2 py-1 border-b border-black/10 bg-white/40 text-[0.625rem] font-medium tracking-wide text-ink/45 select-none">
+      {props.children}
+    </div>
+  );
+}
 
 export default function NoteView(props: { noteId: string }) {
   const [note, setNote] = createSignal<Note | null>(null);
@@ -113,6 +134,64 @@ export default function NoteView(props: { noteId: string }) {
   let autoSaveDelay = 2000;
   const autoSave = debounce(saveNow, () => autoSaveDelay);
 
+  // ---------------------------------------------------------------------
+  // Zoom: window size and content scale are separate gestures. Dragging a
+  // ResizeHandles edge changes the window; zooming scales the content inside
+  // it by moving the document root font size, which every rem-based Tailwind
+  // utility follows — so padding and icons grow with the text instead of the
+  // text overflowing a fixed box.
+  // ---------------------------------------------------------------------
+  const zoom = () => settings().noteZoom;
+
+  createEffect(() => {
+    document.documentElement.style.fontSize = `${rootFontSizePx(zoom())}px`;
+  });
+
+  // Disk write is debounced: a Ctrl+wheel gesture would otherwise emit a
+  // write + a settings-changed broadcast to every window per notch.
+  const persistZoom = debounce((next: number) => {
+    saveSettings({ ...settings(), noteZoom: next }).catch((e) =>
+      console.error("[NoteView] failed to save zoom:", e)
+    );
+  }, 400);
+
+  const applyZoom = (next: number) => {
+    const clamped = clampZoom(next);
+    if (clamped === zoom()) return;
+    patchSettingsLocal({ noteZoom: clamped });
+    persistZoom(clamped);
+  };
+
+  onMount(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((!e.ctrlKey && !e.metaKey) || e.altKey) return;
+      if (e.key === "=" || e.key === "+") {
+        e.preventDefault();
+        applyZoom(stepZoom(zoom(), 1));
+      } else if (e.key === "-" || e.key === "_") {
+        e.preventDefault();
+        applyZoom(stepZoom(zoom(), -1));
+      } else if (e.key === "0") {
+        e.preventDefault();
+        applyZoom(NOTE_ZOOM_DEFAULT);
+      }
+    };
+    // passive: false — preventDefault is required or WebView2 zooms the
+    // whole webview out from under us.
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      applyZoom(stepZoom(zoom(), e.deltaY < 0 ? 1 : -1));
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("wheel", onWheel, { passive: false });
+    onCleanup(() => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("wheel", onWheel);
+      persistZoom.cancel();
+    });
+  });
+
   onMount(() => {
     loadSettings()
       .then((s) => {
@@ -136,7 +215,11 @@ export default function NoteView(props: { noteId: string }) {
       setTags(n.tags);
       setPinned(n.pinned);
     });
+    // Settings are shared with the main window (sort order) and the other
+    // note windows (zoom); adopt the broadcast so a later save of ours does
+    // not write back a stale snapshot of the fields we do not own.
     const unlistenSettings = onSettingsChanged((s) => {
+      applySettings(s);
       if (s.autoSaveIntervalMs >= 500) autoSaveDelay = s.autoSaveIntervalMs;
     });
     unlistenUpdate.catch((e) =>
@@ -324,29 +407,35 @@ export default function NoteView(props: { noteId: string }) {
 
   const colorHex = () => getColorHex(color());
   const deepHex = () => getColorDeepHex(color());
+  const createdAt = () => formatDateTime(note()?.createdAt);
+  const updatedAt = () => formatDateTime(note()?.updatedAt);
 
   return (
     <div
-      class="note-window h-full flex flex-col select-none text-ink transition-[background-color] duration-200"
+      class="note-window relative h-full flex flex-col select-none text-ink transition-[background-color] duration-200"
       style={{ background: colorHex() }}
     >
+      {/* Borderless window: the OS resize border is invisible, so the user
+          needs explicit grab areas. */}
+      <ResizeHandles />
+
       {/* Loading indicator while editor initializes */}
       <Show when={!editorReady() && !error()}>
-        <div class="bg-black/5 text-ink-muted text-xs px-3 py-1.5 text-center">
+        <div class="bg-black/5 text-ink-muted text-xs px-3 py-1.5 text-center shrink-0">
           编辑器初始化中…
         </div>
       </Show>
 
       {/* Error banner */}
       <Show when={error()}>
-        <div class="bg-red-50/90 text-red-700 text-xs px-3 py-1.5 text-center">
+        <div class="bg-red-50/90 text-red-700 text-xs px-3 py-1.5 text-center shrink-0">
           {error()}
         </div>
       </Show>
 
       {/* Transient notice banner */}
       <Show when={notice()}>
-        <div class="bg-amber-50/90 text-amber-800 text-xs px-3 py-1.5 text-center">
+        <div class="bg-amber-50/90 text-amber-800 text-xs px-3 py-1.5 text-center shrink-0">
           {notice()}
         </div>
       </Show>
@@ -354,7 +443,7 @@ export default function NoteView(props: { noteId: string }) {
       {/* Header — the whole bar is a drag region. Tauri only starts a drag
           when the mousedown target itself carries the attribute, so clicks on
           the child buttons are never consumed by a drag start. */}
-      <div class="flex items-center px-4 pt-3 pb-1 min-h-9" data-tauri-drag-region>
+      <div class="flex items-center gap-1 px-3 pt-3 pb-1 min-h-9 shrink-0" data-tauri-drag-region>
         <div class="flex gap-2">
           <button
             onClick={handlePinToggle}
@@ -366,7 +455,7 @@ export default function NoteView(props: { noteId: string }) {
             title="置顶/取消置顶"
             aria-label="置顶/取消置顶"
           >
-            <Pin size={8} />
+            <Pin class="w-2 h-2" />
           </button>
           <button
             onClick={handleClose}
@@ -374,22 +463,28 @@ export default function NoteView(props: { noteId: string }) {
             title="关闭"
             aria-label="关闭"
           >
-            <X size={8} />
+            <X class="w-2 h-2" />
           </button>
         </div>
         {/* Middle spacer — the sole drag region */}
         <div class="flex-1 self-stretch" data-tauri-drag-region />
+        <ZoomControl
+          zoom={zoom()}
+          onZoomIn={() => applyZoom(stepZoom(zoom(), 1))}
+          onZoomOut={() => applyZoom(stepZoom(zoom(), -1))}
+          onZoomReset={() => applyZoom(NOTE_ZOOM_DEFAULT)}
+        />
         <button
           onClick={() => setShowDeleteConfirm(true)}
-          class="mr-1.5 p-1 rounded-sm text-ink/50 hover:text-red-600 hover:bg-black/5 transition-colors"
+          class="p-1 rounded-sm text-ink/50 hover:text-red-600 hover:bg-black/5 transition-colors"
           title="删除便签"
           aria-label="删除便签"
         >
-          <Trash2 size={14} />
+          <Trash2 class="w-3.5 h-3.5" />
         </button>
         <button
           onClick={() => setShowColorPicker(!showColorPicker())}
-          class="w-4 h-4 rounded-full border"
+          class="w-4 h-4 rounded-full border ml-1"
           style={{ background: colorHex(), "border-color": deepHex() }}
           title="更换颜色"
           aria-label="更换颜色"
@@ -398,7 +493,7 @@ export default function NoteView(props: { noteId: string }) {
 
       {/* Color picker */}
       <Show when={showColorPicker()}>
-        <div class="px-4 pb-2 animate-fade-in">
+        <div class="px-3 pb-2 animate-fade-in shrink-0">
           <ColorSwatchRow
             selected={color()}
             onSelect={(c) => {
@@ -410,44 +505,74 @@ export default function NoteView(props: { noteId: string }) {
         </div>
       </Show>
 
-      {/* Title */}
-      <input
-        type="text"
-        value={title()}
-        onInput={(e) => {
-          setTitle(e.currentTarget.value);
-          autoSave();
-        }}
-        placeholder="标题"
-        class="px-4 text-lg font-semibold text-ink outline-none bg-transparent placeholder:text-black/25"
-      />
-
-      {/* Toolbar */}
-      <div class="px-4">
-        <NoteToolbar
-          editor={editorReady() ? editor ?? null : null}
-          noteId={props.noteId}
-          onImageError={showNotice}
-        />
-      </div>
-
-      {/* Editor */}
-      <div class="flex-1 px-4 pb-2 overflow-y-auto">
-        <div
-          ref={editorContainer!}
-          class="min-h-[120px]"
-        />
-      </div>
-
-      {/* Tags */}
-      <div class="px-4 pb-3">
-        <TagInput
-          tags={tags()}
-          onChange={(t) => {
-            setTags(t);
+      {/* Title + timestamps */}
+      <div class="px-3 pb-2 shrink-0">
+        <input
+          type="text"
+          value={title()}
+          onInput={(e) => {
+            setTitle(e.currentTarget.value);
             autoSave();
           }}
+          placeholder="标题"
+          class="w-full text-lg font-semibold text-ink outline-none bg-transparent placeholder:text-black/25"
         />
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-[0.625rem] leading-3 text-ink/50">
+          <Show when={createdAt()}>
+            {(value) => (
+              <span class="flex items-center gap-1" title="创建时间">
+                <Calendar class="w-[0.5625rem] h-[0.5625rem] shrink-0" />
+                创建 {value()}
+              </span>
+            )}
+          </Show>
+          <Show when={updatedAt()}>
+            {(value) => (
+              <span class="flex items-center gap-1" title="修改时间">
+                <CalendarClock class="w-[0.5625rem] h-[0.5625rem] shrink-0" />
+                修改 {value()}
+              </span>
+            )}
+          </Show>
+        </div>
+      </div>
+
+      {/* Formatting toolbar — its own panel so it reads as chrome, not as
+          part of the document. */}
+      <div class="mx-3 mb-2 shrink-0 rounded-md border border-black/10 bg-white/55 overflow-hidden">
+        <PanelLabel>格式</PanelLabel>
+        <div class="px-1.5 py-1">
+          <NoteToolbar
+            editor={editorReady() ? editor ?? null : null}
+            noteId={props.noteId}
+            onImageError={showNotice}
+          />
+        </div>
+      </div>
+
+      {/* Body text — the only region that grows, and the only one with a
+          paper-white, inset surface so it is obviously where typing goes. */}
+      <div class="mx-3 mb-2 flex-1 min-h-0 flex flex-col rounded-md border border-black/10 bg-white/65 overflow-hidden">
+        <PanelLabel>内容</PanelLabel>
+        <div
+          ref={editorContainer!}
+          class="flex-1 min-h-0 overflow-y-auto px-3 py-2"
+        />
+      </div>
+
+      {/* Tags — a separate panel again, so a tag is never mistaken for body
+          text and vice versa. */}
+      <div class="mx-3 mb-3 shrink-0 rounded-md border border-black/10 bg-white/55 overflow-hidden">
+        <PanelLabel>标签</PanelLabel>
+        <div class="px-2.5 py-1.5">
+          <TagInput
+            tags={tags()}
+            onChange={(t) => {
+              setTags(t);
+              autoSave();
+            }}
+          />
+        </div>
       </div>
 
       <Show when={showDeleteConfirm()}>

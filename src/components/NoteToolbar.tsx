@@ -68,14 +68,14 @@ export default function NoteToolbar(props: NoteToolbarProps) {
 
   return (
     <Show when={props.editor}>
-      <div class="flex gap-0.5 mb-2 flex-wrap items-center">
+      <div class="flex gap-0.5 flex-wrap items-center">
         <button
           class={btnClass(isActive("bold"))}
           onClick={run((e) => e.chain().focus().toggleBold().run())}
           title="加粗"
           aria-label="加粗"
         >
-          <Bold size={15} />
+          <Bold class="w-4 h-4" />
         </button>
         <button
           class={btnClass(isActive("italic"))}
@@ -83,7 +83,7 @@ export default function NoteToolbar(props: NoteToolbarProps) {
           title="斜体"
           aria-label="斜体"
         >
-          <Italic size={15} />
+          <Italic class="w-4 h-4" />
         </button>
         <button
           class={btnClass(isActive("underline"))}
@@ -91,7 +91,7 @@ export default function NoteToolbar(props: NoteToolbarProps) {
           title="下划线"
           aria-label="下划线"
         >
-          <UnderlineIcon size={15} />
+          <UnderlineIcon class="w-4 h-4" />
         </button>
         <button
           class={btnClass(isActive("strike"))}
@@ -99,7 +99,7 @@ export default function NoteToolbar(props: NoteToolbarProps) {
           title="删除线"
           aria-label="删除线"
         >
-          <Strikethrough size={15} />
+          <Strikethrough class="w-4 h-4" />
         </button>
         <span class="w-px h-4 bg-black/10 mx-1" />
         <button
@@ -108,7 +108,7 @@ export default function NoteToolbar(props: NoteToolbarProps) {
           title="无序列表"
           aria-label="无序列表"
         >
-          <List size={15} />
+          <List class="w-4 h-4" />
         </button>
         <button
           class={btnClass(isActive("orderedList"))}
@@ -116,7 +116,7 @@ export default function NoteToolbar(props: NoteToolbarProps) {
           title="有序列表"
           aria-label="有序列表"
         >
-          <ListOrdered size={15} />
+          <ListOrdered class="w-4 h-4" />
         </button>
         <span class="w-px h-4 bg-black/10 mx-1" />
         <button
@@ -125,7 +125,7 @@ export default function NoteToolbar(props: NoteToolbarProps) {
           title="插入图片"
           aria-label="插入图片"
         >
-          <ImageIcon size={15} />
+          <ImageIcon class="w-4 h-4" />
         </button>
         <input
           ref={fileInputRef!}

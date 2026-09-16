@@ -44,21 +44,43 @@ export function getColorDeepHex(key: ColorKey): string {
   return COLORS.find((c) => c.key === key)?.deepHex ?? "#e8d972";
 }
 
+/**
+ * Sort keys. Deliberately only two timestamps + title: this app has no
+ * "last accessed" notion and never will — sorting by access time would make
+ * the grid reshuffle itself just because a note was opened. Keep it that way.
+ */
+export type SortBy = "updatedAt" | "createdAt" | "title";
+export type SortDir = "asc" | "desc";
+
+export const SORT_BY_VALUES: readonly SortBy[] = ["updatedAt", "createdAt", "title"];
+export const SORT_DIR_VALUES: readonly SortDir[] = ["asc", "desc"];
+
+export const DEFAULT_SORT_BY: SortBy = "updatedAt";
+export const DEFAULT_SORT_DIR: SortDir = "desc";
+
 export interface Settings {
   defaultColor: ColorKey;
   autoSaveIntervalMs: number;
   launchOnStartup: boolean;
   trayOnClose: boolean;
+  sortBy: SortBy;
+  sortDir: SortDir;
+  /** Note-window zoom factor; 1 = 100%. See src/lib/zoom.ts for the range. */
+  noteZoom: number;
 }
 
 /**
  * Default window position/size for a newly created note. Single source of
  * truth for the frontend; mirrored as constants in src-tauri/src/tray.rs
  * (kept in sync manually — Rust cannot import the TS module).
+ *
+ * 340x320 rather than the original 300x240: the note window now carries
+ * labelled panels for toolbar / body / tags, and at 240px tall the body text
+ * was left with almost no room.
  */
 export const DEFAULT_NOTE_POSITION: NotePosition = {
   x: 100,
   y: 100,
-  width: 300,
-  height: 240,
+  width: 340,
+  height: 320,
 };

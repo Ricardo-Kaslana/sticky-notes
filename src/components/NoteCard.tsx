@@ -9,7 +9,10 @@ import Pin from "lucide-solid/icons/pin";
 import ExternalLink from "lucide-solid/icons/external-link";
 import Palette from "lucide-solid/icons/palette";
 import Trash2 from "lucide-solid/icons/trash-2";
+import Calendar from "lucide-solid/icons/calendar";
+import CalendarClock from "lucide-solid/icons/calendar-clock";
 import { DELETE_NOTE_CONFIRM } from "../lib/uiText";
+import { formatDateTime } from "../lib/formatTime";
 
 interface NoteCardProps {
   note: Note;
@@ -134,6 +137,28 @@ export default function NoteCard(props: NoteCardProps) {
             </For>
           </div>
         </Show>
+
+        {/* Timestamps. Creation and modification only — this app has no
+            notion of "last accessed" and must never gain one, or the grid
+            would reorder itself merely because a note was opened. */}
+        <div class="mt-2 pt-1.5 border-t border-black/10 flex flex-col gap-0.5 text-[10px] leading-3 text-ink/50">
+          <Show when={formatDateTime(props.note.createdAt)}>
+            {(created) => (
+              <span class="flex items-center gap-1" title="创建时间">
+                <Calendar size={9} class="shrink-0" />
+                <span class="truncate">创建 {created()}</span>
+              </span>
+            )}
+          </Show>
+          <Show when={formatDateTime(props.note.updatedAt)}>
+            {(updated) => (
+              <span class="flex items-center gap-1" title="修改时间">
+                <CalendarClock size={9} class="shrink-0" />
+                <span class="truncate">修改 {updated()}</span>
+              </span>
+            )}
+          </Show>
+        </div>
       </div>
 
       {/* Context menu */}

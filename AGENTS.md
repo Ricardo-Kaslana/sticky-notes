@@ -52,13 +52,18 @@ Read [README.md](./README.md) for the onboarding tour. Design specs and implemen
 |---|---|
 | `index.tsx` | App entry + manual `Switch/Match` routing (no `@solidjs/router`) |
 | `App.tsx` | **Placeholder (`return null`)** — routing is in `index.tsx` instead |
-| `routes/MainView.tsx` | `/` route — sidebar + masonry grid |
+| `routes/MainView.tsx` | `/` route — sidebar + sort bar + masonry grid |
 | `routes/NoteView.tsx` | `/note/:id` route — TipTap editor in floating window |
 | `stores/notesStore.ts` | Single source of truth for the note list |
-| `lib/types.ts` | TS mirrors of Rust models — **must stay in sync with `models.rs`** |
+| `stores/settingsStore.ts` | Settings signal + `normalizeSettings`; `loadSettings` / `saveSettings` / `applySettings` / `patchSettingsLocal` |
+| `lib/types.ts` | TS mirrors of Rust models — **must stay in sync with `models.rs`**. Also owns `SortBy` / `SortDir` and their value arrays |
 | `lib/invoke.ts` | Typed Tauri `invoke()` wrappers — **all invoke calls go through here** |
 | `lib/events.ts` | `onNoteUpdated` / `onNoteDeleted` / `onSettingsChanged` — **all event listeners go through here** |
-| `components/` | Sidebar, NoteCard, MasonryGrid, TagInput, ColorPicker, NoteToolbar, ConfirmDialog, ContextMenu |
+| `lib/filterNotes.ts` | Search / tag / pinned filtering; delegates ordering to `sortNotes` |
+| `lib/sortNotes.ts` | `sortNotes(notes, by, dir)` — the only place note ordering is decided |
+| `lib/formatTime.ts` | `formatDateTime` — RFC3339 → local `YYYY-MM-DD HH:mm` |
+| `lib/zoom.ts` | Zoom range, discrete stops, `clampZoom` / `stepZoom` / `formatZoom` |
+| `components/` | Sidebar, SortBar, NoteCard, MasonryGrid, TagInput, ColorPicker, NoteToolbar, ZoomControl, ResizeHandles, ConfirmDialog |
 
 ---
 
@@ -72,6 +77,10 @@ Read [README.md](./README.md) for the onboarding tour. Design specs and implemen
 6. **Window position capture** (`NoteView.tsx`) uses `outerPosition` / `outerSize` divided by `scaleFactor()`. Cache the scale factor once per save — do not `await win.scaleFactor()` four times.
 7. **Tailwind v4 only**, via `@tailwindcss/vite`. No `tailwind.config.ts`, no PostCSS config, no other CSS frameworks.
 8. **Camel-case JSON on the wire.** Rust models use `#[serde(rename_all = "camelCase")]`; TS types in `lib/types.ts` mirror the camelCase shape. If you rename a Rust field, update both.
+9. **There is no "last accessed" concept, and there must never be one.** Notes carry `createdAt` and `updatedAt` only. Do not add `accessedAt` / `lastOpenedAt` / an access-count, and do not add a sort key that depends on opening a note — it would make the grid reshuffle itself as a side effect of reading.
+10. **Every new `Settings` field needs `#[serde(default = "...")]`.** `commands/settings.rs::load_settings` treats a parse failure as corruption: it renames the file to `.json.bak` and silently reverts to defaults. A settings.json written by an older build must keep parsing. Mirror the field in `lib/types.ts` and in `stores/settingsStore.ts::DEFAULT_SETTINGS`, and validate it in `write_settings`.
+11. **Note ordering is decided in exactly one place — `lib/sortNotes.ts`.** `filterNotes` filters, then calls it. Do not sort inside components, and do not re-add a sort in the Rust `list_notes` (see the v0.1.7 changelog for why it was removed).
+12. **The note window is `decorations(false)` and `resizable(true)`.** Native resize borders are invisible on a borderless window, so dragging is handed to the OS through `components/ResizeHandles.tsx` → `startResizeDragging`. That call requires `core:window:allow-start-resize-dragging` in `src-tauri/capabilities/default.json`; without the permission it fails as a rejected promise rather than a visible error.
 
 ---
 
@@ -91,7 +100,7 @@ Read [README.md](./README.md) for the onboarding tour. Design specs and implemen
 
 These are tracked in [CHANGELOG.md](./CHANGELOG.md) — the entries marked *(v0.1.2)* / *(v0.1.4)* / *(v0.1.5)* / *(v0.1.6)* are resolved, the rest remain open:
 
-- `stores/settingsStore.ts` **exists** (v0.1.5) with a `SettingsDialog` UI reachable from the sidebar. Default color, auto-save interval, close-to-tray behavior, and launch-on-startup (v0.1.6, via `tauri-plugin-autostart`) all take effect.
+- `stores/settingsStore.ts` **exists** (v0.1.5) with a `SettingsDialog` UI reachable from the sidebar. Default color, auto-save interval, close-to-tray behavior, and launch-on-startup (v0.1.6, via `tauri-plugin-autostart`) all take effect. Sort order and note zoom (unreleased) live in the same file but are edited from `SortBar` / `ZoomControl`, not the dialog.
 - `src/App.tsx` is **deleted** (v0.1.2). Routing lives in `src/index.tsx`. No consolidation planned for v0.2.
 - `src/components/ColorPicker.tsx` is **wired up** in `NoteCard` right-click "Change color" menu (v0.1.2).
 - `NoteCard.tsx` right-click "Change color" **works** (v0.1.2). The floating window still has its own color row.

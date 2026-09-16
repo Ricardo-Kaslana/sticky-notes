@@ -16,17 +16,21 @@ function note(over: Partial<Note> & { id: string }): Note {
   };
 }
 
+// Distinct updatedAt values (a newest → d oldest) so the default sort —
+// updatedAt descending — lines up with the natural a,b,c,d reading order.
+// Without them every fixture ties and the assertions would only be testing
+// the tiebreak.
 const NOTES: Note[] = [
-  note({ id: "a", title: "Buy milk", content: "<p>from corner store</p>" }),
-  note({ id: "b", title: "Fix bug", content: "<p>hello world</p>", pinned: true }),
-  note({ id: "c", title: "Hello", content: "<p><b>bold</b> text</p>", tags: ["Work"] }),
-  note({ id: "d", title: "Notes", content: "<p>misc</p>", tags: ["personal"], pinned: true }),
+  note({ id: "a", title: "Buy milk", content: "<p>from corner store</p>", updatedAt: "2026-01-04T00:00:00Z" }),
+  note({ id: "b", title: "Fix bug", content: "<p>hello world</p>", pinned: true, updatedAt: "2026-01-03T00:00:00Z" }),
+  note({ id: "c", title: "Hello", content: "<p><b>bold</b> text</p>", tags: ["Work"], updatedAt: "2026-01-02T00:00:00Z" }),
+  note({ id: "d", title: "Notes", content: "<p>misc</p>", tags: ["personal"], pinned: true, updatedAt: "2026-01-01T00:00:00Z" }),
 ];
 
 const NONE: FilterOpts = { query: "", tag: "", pinnedOnly: false };
 
 describe("filterNotes", () => {
-  it("empty opts returns all notes in input order", () => {
+  it("empty opts returns every note, newest-updated first", () => {
     expect(filterNotes(NOTES, NONE).map((n) => n.id)).toEqual(["a", "b", "c", "d"]);
   });
 
@@ -81,5 +85,37 @@ describe("filterNotes", () => {
 
   it("no match returns empty array", () => {
     expect(filterNotes(NOTES, { ...NONE, query: "absent" })).toEqual([]);
+  });
+});
+
+describe("filterNotes sorting", () => {
+  const DATED: Note[] = [
+    note({ id: "a", title: "Beta", createdAt: "2026-05-01T00:00:00Z", updatedAt: "2026-05-01T00:00:00Z" }),
+    note({ id: "b", title: "Alpha", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-09-01T00:00:00Z" }),
+    note({ id: "c", title: "", createdAt: "2026-03-01T00:00:00Z", updatedAt: "2026-03-01T00:00:00Z" }),
+  ];
+
+  it("defaults to updatedAt descending when no sort is given", () => {
+    expect(filterNotes(DATED, NONE).map((n) => n.id)).toEqual(["b", "a", "c"]);
+  });
+
+  it("honours sortBy createdAt in both directions", () => {
+    expect(filterNotes(DATED, { ...NONE, sortBy: "createdAt", sortDir: "asc" }).map((n) => n.id))
+      .toEqual(["b", "c", "a"]);
+    expect(filterNotes(DATED, { ...NONE, sortBy: "createdAt", sortDir: "desc" }).map((n) => n.id))
+      .toEqual(["a", "c", "b"]);
+  });
+
+  it("honours sortBy title with untitled notes last", () => {
+    expect(filterNotes(DATED, { ...NONE, sortBy: "title", sortDir: "asc" }).map((n) => n.id))
+      .toEqual(["b", "a", "c"]);
+    expect(filterNotes(DATED, { ...NONE, sortBy: "title", sortDir: "desc" }).map((n) => n.id))
+      .toEqual(["a", "b", "c"]);
+  });
+
+  it("sorts the filtered subset, not the full list", () => {
+    expect(
+      filterNotes(DATED, { ...NONE, query: "a", sortBy: "updatedAt", sortDir: "asc" }).map((n) => n.id)
+    ).toEqual(["a", "b"]);
   });
 });

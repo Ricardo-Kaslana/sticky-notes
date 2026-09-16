@@ -25,7 +25,7 @@ export default function ConfirmDialog(props: ConfirmDialogProps) {
             onClick={props.onConfirm}
             class="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm bg-red-600 text-white hover:bg-red-700 rounded-sm transition-colors"
           >
-            <Trash2 size={14} />
+            <Trash2 class="w-3.5 h-3.5" />
             {props.confirmLabel ?? "删除"}
           </button>
         </div>
