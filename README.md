@@ -114,15 +114,19 @@ sticky-notes/
 ## How it works
 
 ### Persistence
-Notes are stored as one JSON file per note in the OS app-data dir:
+Notes are stored as one JSON file per note in the OS app-data dir, under the app identifier `com.dawnwang.stickynotes`:
 
 | OS | Path |
 |---|---|
-| Windows | `%APPDATA%/sticky-notes/notes/<uuid>.json` |
-| macOS | `~/Library/Application Support/sticky-notes/notes/<uuid>.json` |
-| Linux | `~/.local/share/sticky-notes/notes/<uuid>.json` |
+| Windows | `%APPDATA%\com.dawnwang.stickynotes\notes\<uuid>.json` |
+| macOS | `~/Library/Application Support/com.dawnwang.stickynotes/notes/<uuid>.json` |
+| Linux | `~/.local/share/com.dawnwang.stickynotes/notes/<uuid>.json` |
 
 Settings live next to them as `settings.json`. Attachments are stored under `attachments/<note-uuid>/`.
+
+Only the Windows path is actually exercised — the other two follow from Tauri's app-data convention on platforms this project has never run on.
+
+Notes written before v0.1.6 sit in a sibling `sticky-notes` directory (the old bare identifier). `lib.rs::migrate_legacy_app_data` moves them — and rewrites the absolute attachment URLs embedded in each note JSON — on the first launch after the identifier change.
 
 ### Floating window note-ID delivery
 Each floating note is its own Tauri webview window. The note ID reaches the frontend through three layered mechanisms (`windows.rs` → `src/index.tsx`): an optimistic `initialization_script` setting `window.__NOTE_ID__`, an `on_page_load` `eval()` of the same, and a `get_note_id` IPC command (reads `window.label()`) as the reliable fallback. The URL itself stays clean (`index.html`).
