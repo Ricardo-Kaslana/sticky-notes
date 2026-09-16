@@ -2,7 +2,7 @@
 
 A lightweight, high-performance, modern minimalist sticky-notes desktop app for Windows. Built with Tauri 2 + SolidJS + TipTap.
 
-![status](https://img.shields.io/badge/status-v0.1.5-blue)
+![status](https://img.shields.io/badge/status-v0.1.7-blue)
 ![platform](https://img.shields.io/badge/platform-Windows-lightgrey)
 
 ---

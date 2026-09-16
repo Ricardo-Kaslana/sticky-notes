@@ -4,13 +4,13 @@
 
 日期格式 `YYYY-MM-DD`。分类沿用 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)：**新增** / **变更** / **修复** / **移除** / **安全** / **性能** / **测试**。同一版本内按此顺序排列，没有内容的分类省略。
 
-版本号在 `package.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json` 三处保持同步。仓库没有 git tag 也没有远端，因此不提供版本间 diff 链接。
+版本号声明在 `package.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json` 三处，需手动同步（连带 `package-lock.json` 与 `src-tauri/Cargo.lock` 里的同名条目）。仓库没有 git tag 也没有远端，因此不提供版本间 diff 链接。
 
 ---
 
-## [未发布]
+## [0.1.7] — 2026-09-17
 
-UI 美化 sweep（依据 2026-07-26 设计规格）与随后的性能微调。代码已提交，但三处版本号仍停在 `0.1.6`，尚未提升。
+UI 美化 sweep（依据 2026-07-26 设计规格）与随后的性能微调，是 0.1.6 之后积累的全部改动。
 
 ### 新增
 
