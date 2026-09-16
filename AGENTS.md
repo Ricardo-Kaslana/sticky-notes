@@ -2,7 +2,7 @@
 
 Project conventions for AI coding agents (Codex, Claude Code, etc.) working on **Sticky Notes**.
 
-For Claude Code sessions, see [CLAUDE.md](./CLAUDE.md) — it points back here.
+This file is the single source of truth for agent conventions. There is no root `CLAUDE.md` — Claude Code sessions should read this file directly.
 
 ---
 
@@ -15,7 +15,7 @@ A lightweight desktop sticky-notes app for Windows.
 - **Persistence**: one JSON file per note in the OS app-data dir
 - **Distribution target**: Windows desktop (macOS/Linux not yet tested)
 
-Read [README.md](./README.md) for the onboarding tour and [docs/superpowers/specs/2026-06-06-sticky-notes-design.md](./docs/superpowers/specs/2026-06-06-sticky-notes-design.md) for the v1 design.
+Read [README.md](./README.md) for the onboarding tour. Design specs and implementation plans live in [docs/archive/](./docs/archive/README.md) — historical reference only, not a live source of truth.
 
 ---
 
@@ -108,11 +108,10 @@ If you change any of these, update both code and CHANGELOG.md.
 |---|---|---|
 | [README.md](./README.md) | Onboarding, quick start, project layout | Current |
 | [CHANGELOG.md](./CHANGELOG.md) | Release notes, gaps, fixes per version | Current |
-| [docs/superpowers/specs/2026-06-06-sticky-notes-design.md](./docs/superpowers/specs/2026-06-06-sticky-notes-design.md) | v1 design spec (approved 2026-06-06) | Approved; see "Implementation Status" addendum at the bottom |
-| [docs/superpowers/plans/2026-06-06-sticky-notes.md](./docs/superpowers/plans/2026-06-06-sticky-notes.md) | 18-task implementation plan + verification checklist | Tasks 1–18 committed; checklist marked-up reflects actual state |
-| [docs/agents/issue-tracker.md](./docs/agents/issue-tracker.md) | `.scratch/<feature>/PRD.md` convention | **Not currently used by this project** — kept for reference |
-| [docs/agents/triage-labels.md](./docs/agents/triage-labels.md) | Five triage roles for the issue tracker | **Not currently used by this project** — kept for reference |
-| [docs/agents/domain.md](./docs/agents/domain.md) | `CONTEXT.md` + `docs/adr/` convention | **Not currently used by this project** — kept for reference |
+| [AGENTS.md](./AGENTS.md) | This file — conventions for AI coding agents | Current |
+| [docs/archive/](./docs/archive/README.md) | Archived design specs, implementation plans, upstream skill-pack conventions | **Historical reference only** — not a live source of truth |
+
+When you need design rationale for a shipped feature, start at `docs/archive/README.md` — it indexes every archived doc by date and scope. Do not treat anything under `docs/archive/` as describing current behavior; CHANGELOG.md and the code win.
 
 ---
 

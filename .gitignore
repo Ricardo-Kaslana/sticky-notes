@@ -39,3 +39,5 @@ src-tauri/target/
 # Omo
 .omo/
 
+# workbuddy
+.workbuddy-ai

@@ -94,12 +94,12 @@ sticky-notes/
 │   ├── lib/                    types, invoke, events
 │   └── utils/debounce.ts
 │
-├── docs/
-│   ├── superpowers/            Design spec + implementation plan
-│   └── agents/                 Upstream skill-pack conventions (reference only)
+├── docs/archive/               Historical design specs + plans (reference only)
+│   ├── superpowers/specs/      Approved design specs
+│   ├── superpowers/plans/      Task-by-task implementation plans
+│   └── agents/                 Upstream skill-pack conventions
 │
 ├── AGENTS.md                   AI agent conventions (Codex, Claude Code, ...)
-├── CLAUDE.md                   Claude Code pointer — see AGENTS.md
 ├── README.md                   This file
 └── CHANGELOG.md                Release notes, gaps, fixes
 ```
@@ -138,11 +138,9 @@ By default, closing the main window calls `prevent_close()` + `hide()` in `lib.r
 
 ## Documentation
 
-- **[Design spec](docs/superpowers/specs/2026-06-06-sticky-notes-design.md)** — v1 design (approved 2026-06-06)
-- **[Implementation plan](docs/superpowers/plans/2026-06-06-sticky-notes.md)** — 18-task build plan + verification checklist
 - **[CHANGELOG.md](CHANGELOG.md)** — release notes, known gaps, integration fixes
 - **[AGENTS.md](AGENTS.md)** — conventions for AI coding agents
-- **[CLAUDE.md](CLAUDE.md)** — Claude Code entry point (points to AGENTS.md)
+- **[docs/archive/](docs/archive/README.md)** — archived design specs and implementation plans, indexed by date and scope. Historical reference only; the code and CHANGELOG.md are authoritative.
 
 ---
 
