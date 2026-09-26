@@ -41,6 +41,10 @@
 - **`MainView` 现在也监听 `settings-changed`** —— 浮窗写缩放后会广播，主窗口若仍持陈旧快照，下次切换排序就会把 `noteZoom` 回写旧值。`NoteView` 的同一个监听也从「只读 `autoSaveIntervalMs`」改为 `applySettings`，理由相同。
 - **`Settings` 的三个新字段都带 `#[serde(default = "...")]`** —— `load_settings` 把解析失败当损坏处理（改名 `.json.bak` + 回落默认值），旧版 `settings.json` 缺这三个键必须仍能解析，否则用户会静默丢掉全部设置。
 
+### 修复
+
+- **重开已钉住的便签浮窗不恢复置顶** —— `create_note_window` 建窗时不读便签数据，`set_always_on_top` 只在用户点击钉住按钮时调用；钉住 → 关窗 → 重开后 UI 显示已钉住但窗口实际不置顶。现在 `NoteView` 加载便签后，若 `pinned` 为 true 会补调一次 `set_note_window_pinned`。
+
 ### 移除
 
 - **明确不做「访问时间」相关的任何功能** —— 不新增 `accessedAt` / `lastOpenedAt` / 访问计数，不提供按访问时间排序，也不显示访问时间。便签只有创建时间与修改时间两个时间戳；按访问时间排序会让网格仅仅因为「被打开看过」就自己重排。已在 `AGENTS.md` 硬规则第 9 条写死。

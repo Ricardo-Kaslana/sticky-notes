@@ -351,6 +351,14 @@ export default function NoteView(props: { noteId: string }) {
       setTags(data.tags);
       setColor(data.color);
       setPinned(data.pinned);
+      // create_note_window never reads the note, so the saved pin state does
+      // not carry over to the OS window; without this a reopened pinned note
+      // shows the pin dot but is not actually always-on-top.
+      if (data.pinned) {
+        api.setNoteWindowPinned(props.noteId, true).catch((e) =>
+          console.error("[NoteView] Failed to restore pinned state:", e)
+        );
+      }
       if (editor) {
         editor.commands.setContent(data.content);
       }
