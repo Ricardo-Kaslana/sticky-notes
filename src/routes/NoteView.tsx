@@ -1,4 +1,4 @@
-import { createSignal, createEffect, Show, onMount, onCleanup, type JSX } from "solid-js";
+import { createSignal, createEffect, Show, onMount, onCleanup } from "solid-js";
 import { Editor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -34,15 +34,6 @@ import ResizeHandles from "../components/ResizeHandles";
 import ZoomControl from "../components/ZoomControl";
 import { debounce } from "../utils/debounce";
 import { insertImageFromBlob } from "../lib/insertImageFromBlob";
-
-/** Shared header strip that labels one region of the editor. */
-function PanelLabel(props: { children: JSX.Element }) {
-  return (
-    <div class="flex items-center gap-1 px-2 py-1 border-b border-black/10 bg-white/40 text-[0.625rem] font-medium tracking-wide text-ink/45 select-none">
-      {props.children}
-    </div>
-  );
-}
 
 export default function NoteView(props: { noteId: string }) {
   const [note, setNote] = createSignal<Note | null>(null);
@@ -548,7 +539,6 @@ export default function NoteView(props: { noteId: string }) {
       {/* Formatting toolbar — its own panel so it reads as chrome, not as
           part of the document. */}
       <div class="mx-3 mb-2 shrink-0 rounded-md border border-black/10 bg-white/55 overflow-hidden">
-        <PanelLabel>格式</PanelLabel>
         <div class="px-1.5 py-1">
           <NoteToolbar
             editor={editorReady() ? editor ?? null : null}
@@ -561,7 +551,6 @@ export default function NoteView(props: { noteId: string }) {
       {/* Body text — the only region that grows, and the only one with a
           paper-white, inset surface so it is obviously where typing goes. */}
       <div class="mx-3 mb-2 flex-1 min-h-0 flex flex-col rounded-md border border-black/10 bg-white/65 overflow-hidden">
-        <PanelLabel>内容</PanelLabel>
         <div
           ref={editorContainer!}
           class="flex-1 min-h-0 overflow-y-auto px-3 py-2"
@@ -571,7 +560,6 @@ export default function NoteView(props: { noteId: string }) {
       {/* Tags — a separate panel again, so a tag is never mistaken for body
           text and vice versa. */}
       <div class="mx-3 mb-3 shrink-0 rounded-md border border-black/10 bg-white/55 overflow-hidden">
-        <PanelLabel>标签</PanelLabel>
         <div class="px-2.5 py-1.5">
           <TagInput
             tags={tags()}

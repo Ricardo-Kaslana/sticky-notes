@@ -14,7 +14,7 @@ A lightweight, high-performance, modern minimalist sticky-notes desktop app for 
 - **Timestamps on every note** — creation and modification time, shown on both the grid card and the floating window. There is no "last accessed" notion anywhere in the app
 - **Borderless floating note windows** — drag from anywhere, TipTap rich text, color & tag editing, pin-on-top
 - **Zoom and resize** — `− 100% +` in the title bar, `Ctrl` `+` / `-` / `0`, or `Ctrl`+scroll scales the content; drag any edge or corner to resize the window
-- **Layered editor** — the floating window separates toolbar, body text, and tags into three labelled panels
+- **Layered editor** — the floating window separates toolbar, body text, and tags into three panels
 - **System tray** — left-click reveals main window; menu has Show / New note / Quit
 - **Auto-save** — debounced save on every keystroke (interval configurable in Settings); close the window, reopen, content is there
 - **Settings** — default note color, auto-save interval, close-to-tray behavior (sidebar → 设置); sort order and zoom persist in the same file
