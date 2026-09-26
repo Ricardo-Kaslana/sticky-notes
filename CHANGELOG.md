@@ -21,7 +21,7 @@
   - **空标题恒定沉底**，与升/降序无关 —— 否则升序会以一片「无标题」开头，把真正的标题埋掉。
   - 同键用 `id` 做稳定 tiebreak，输出与输入数组顺序无关（`list_notes` 返回的是 OS 目录序，本身没有意义）。
   - 排序栏同时显示「共 N 条便签 · 显示 M 条」，筛选生效时能看出被过滤掉多少。
-- **便签显示创建时间与修改时间**（`lib/formatTime.ts`）—— `NoteCard` 底部时间行（`创建 2026-09-17 00:34` / `修改 2026-09-17 00:41`），便签浮窗标题下方一行同款信息。时间用本地时区 `YYYY-MM-DD HH:mm`；无法解析的值渲染为空而不是 `Invalid Date`。
+- **便签显示时间信息**（`lib/formatTime.ts`）—— `NoteCard` 底部时间行只显示「修改 2026-09-17 00:41」一行（卡片纵向空间有限，创建时间只在浮窗里看）；便签浮窗标题下方显示「创建 / 修改」两行同款信息。时间用本地时区 `YYYY-MM-DD HH:mm`；无法解析的值渲染为空而不是 `Invalid Date`。
 - **便签浮窗缩放**（`lib/zoom.ts` + `components/ZoomControl.tsx`）—— 标题栏右侧 `− 100% +` 控件、`Ctrl+=` / `Ctrl+-` / `Ctrl+0` 快捷键、`Ctrl+滚轮` 连续缩放，范围 75%–200%（离散档位 75/85/100/115/130/150/175/200）。
   - 实现方式是改 `document.documentElement.style.fontSize`，所有 rem 系的 Tailwind 工具类随之等比缩放 —— 文字、内边距、图标一起变大，而不是文字撑破固定尺寸的盒子。
   - 配套把便签浮窗内所有 px 尺寸改成 rem：lucide 图标从 `size={N}`（会输出 px 的 `width`/`height` 属性，不随缩放变化）改成 rem class（`w-4 h-4`、`w-[0.5625rem]`），`index.css` 里 `.note-window` 的 `min-height` / `padding-left` / `margin` 由 px 改 rem。主窗口不做缩放，保持 `size={N}` 不变。

@@ -11,7 +11,7 @@ A lightweight, high-performance, modern minimalist sticky-notes desktop app for 
 
 - **Masonry grid management view** — sidebar search, tag filter (with live counts), pinned-only filter
 - **Sorting** — by modified time, created time, or title, ascending or descending; the choice is remembered across restarts
-- **Timestamps on every note** — creation and modification time, shown on both the grid card and the floating window. There is no "last accessed" notion anywhere in the app
+- **Timestamps on every note** — the grid card shows the modification time; the floating window shows both creation and modification time. There is no "last accessed" notion anywhere in the app
 - **Borderless floating note windows** — drag from anywhere, TipTap rich text, color & tag editing, pin-on-top
 - **Zoom and resize** — `− 100% +` in the title bar, `Ctrl` `+` / `-` / `0`, or `Ctrl`+scroll scales the content; drag any edge or corner to resize the window
 - **Layered editor** — the floating window separates toolbar, body text, and tags into three panels
