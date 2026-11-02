@@ -1,8 +1,10 @@
 [package]
 name = "sticky-notes"
-version = "0.1.7"
-description = "A sticky notes desktop application"
-authors = ["you"]
+version = "0.2.0"
+description = "A lightweight, open-source sticky notes desktop app for Windows"
+authors = ["Dawn Wang"]
+license = "MIT"
+repository = "https://github.com/Ricardo-Kaslana/sticky-notes"
 edition = "2021"
 
 [lib]

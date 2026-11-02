@@ -1,8 +1,8 @@
+use super::{atomic_write, validate_id};
+use crate::models::Note;
 use std::fs;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager};
-use crate::models::Note;
-use super::{atomic_write, validate_id};
 
 fn notes_dir(app: &AppHandle) -> Result<PathBuf, String> {
     app.path()
@@ -65,8 +65,8 @@ pub async fn read_note(app: AppHandle, id: String) -> Result<Note, String> {
     validate_id(&id)?;
     let dir = ensure_notes_dir(&app)?;
     let path = dir.join(format!("{}.json", id));
-    let content = fs::read_to_string(&path)
-        .map_err(|e| format!("failed to read note {}: {}", id, e))?;
+    let content =
+        fs::read_to_string(&path).map_err(|e| format!("failed to read note {}: {}", id, e))?;
     serde_json::from_str(&content).map_err(|e| format!("failed to parse note {}: {}", id, e))
 }
 
@@ -141,7 +141,7 @@ mod tests {
             updated_at: "2026-06-06T00:00:00Z".into(),
             ..Note::new("newer".into())
         };
-        let mut notes = vec![older.clone(), newer.clone()];
+        let mut notes = [older, newer];
         notes.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
         assert_eq!(notes[0].id, "newer");
         assert_eq!(notes[1].id, "older");

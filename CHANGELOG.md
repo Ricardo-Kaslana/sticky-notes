@@ -4,16 +4,19 @@
 
 日期格式 `YYYY-MM-DD`。分类沿用 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)：**新增** / **变更** / **修复** / **移除** / **安全** / **性能** / **测试**。同一版本内按此顺序排列，没有内容的分类省略。
 
-版本号声明在 `package.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json` 三处，需手动同步（连带 `package-lock.json` 与 `src-tauri/Cargo.lock` 里的同名条目）。版本里程碑用 `vX.Y.Z` 注释 tag 标记（首个是 `v0.1.7`）；仓库没有远端，因此不提供版本间 diff 链接。
+版本号声明在 `package.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json` 三处，需手动同步（连带 `package-lock.json` 与 `src-tauri/Cargo.lock` 里的同名条目）。版本里程碑用 `vX.Y.Z` 注释 tag 标记。版本间对比见 [GitHub Releases](https://github.com/Ricardo-Kaslana/sticky-notes/releases)。
 
 ---
 
-## [未发布] — 2026-09-17
+## [0.2.0] — 2026-11-02
 
-排序、时间显示、便签缩放，以及编辑界面的分区重构。版本号尚未提升（仍在 0.1.7 之后）。
+排序、时间显示、便签缩放、编辑界面分区重构，以及项目的首次开源发布。
 
 ### 新增
 
+- **MIT License 与开源元数据** —— 新增 `LICENSE`，`package.json` / `Cargo.toml` 补全 description、license、author、repository、keywords；版本提升到 `0.2.0`。
+- **双语 README 与社区文档** —— 英文主 [README.md](./README.md)、中文 [README.zh-CN.md](./README.zh-CN.md)，以及 `CONTRIBUTING.md`、`CODE_OF_CONDUCT.md`、`SECURITY.md`、Issue 表单与 PR 模板。
+- **GitHub 自动化** —— CI 在 `windows-latest` 上运行 `tsc`、Vitest、`cargo fmt` / `clippy` / `test`；推送 `v*` tag 时由 `tauri-action` 构建 Windows 安装包并创建草稿 Release；Dependabot 每周检查 npm / Cargo / Actions 更新。
 - **便签排序**（`components/SortBar.tsx` + `lib/sortNotes.ts`）—— 主视图网格上方新增排序栏：
   - 排序键三选一：**修改时间 / 创建时间 / 标题**；方向按钮在**升序 / 降序**之间切换（升序 A→Z / 旧→新）。
   - 排序偏好写入 `settings.json`（`sortBy` / `sortDir`），重启后保持。
@@ -31,6 +34,9 @@
 
 ### 变更
 
+- **应用标识改为 `io.github.ricardo-kaslana.stickynotes`**（原为 `com.dawnwang.stickynotes`）—— 去掉个人 handle，便于公开分发。`lib.rs::migrate_legacy_app_data` 按 `com.dawnwang.stickynotes` → `sticky-notes` 的顺序查找旧数据并整体迁移，同时重写便签 JSON 中的附件绝对路径；新目录已有 `notes/` 时跳过迁移。
+- **依赖锁文件改用官方 npm registry** —— `package-lock.json` 中 311 处 `registry.npmmirror.com` 地址替换为 `registry.npmjs.org`，避免魔改镜像影响外部贡献者。
+- **仓库卫生** —— 清理未使用的 Vite / Solid / Tauri 脚手架 SVG，补充 `.editorconfig`、`.nvmrc`，扩展 `.gitignore` 的 IDE / AI 缓存 / 环境文件规则。
 - **便签浮窗编辑界面重构为三块独立面板**（`routes/NoteView.tsx`）—— 工具栏、正文、标签各自成块，每块带浅色底 + 1px 描边 + 圆角：
   - 工具栏从「贴在正文上方的一排按钮」变成明确的 chrome 面板；正文区改为纸白色（`bg-white/65`）内嵌面板，是唯一会伸缩的区域，也是唯一明显「可以在这里打字」的区域；标签区再次独立成块，标签不会再被误读成正文。
   - 面板不带文字标题条 —— 早期实现每块顶部有「格式 / 内容 / 标签」小标题，但浮窗纵向空间紧张，三条标题吃掉约 60px 可书写高度，已移除。
@@ -49,6 +55,11 @@
 ### 移除
 
 - **明确不做「访问时间」相关的任何功能** —— 不新增 `accessedAt` / `lastOpenedAt` / 访问计数，不提供按访问时间排序，也不显示访问时间。便签只有创建时间与修改时间两个时间戳；按访问时间排序会让网格仅仅因为「被打开看过」就自己重排。已在 `AGENTS.md` 硬规则第 9 条写死。
+
+### 安全
+
+- **新增 `SECURITY.md` 与私下漏洞报告流程** —— 安全漏洞通过 GitHub Security Advisories 私下提交，不在公开 Issue 中讨论；明确路径处理、HTML 渲染、CSP / capabilities、asset 协议为主要关注面。
+- **CI 覆盖** —— 每次 push / PR 都在 Windows 上执行类型检查、前端测试与 Rust `fmt` / `clippy` / `test`，降低回归进入默认分支的概率。
 
 ### 测试
 
@@ -361,7 +372,8 @@ v0.1.0 的核心链路能跑通，但「窗口身份如何传给前端」这件�
 
 - **平台覆盖** —— 只在 Windows 10 / 11 上验证过。macOS 与 Linux 未测试；Tauri 2 理论上支持，但窗口创建、托盘、自启动三条路径都有平台分支。
 - **深色模式** —— 未实现。UI 美化引入的设计 token 层已为其预留基础，理论上只需换变量值。
-- **无发布产物** —— 没有 git tag、没有远端、没有 CI。`npm run tauri build` 能产出安装包，但从未正式发布过。
+- **英文界面** —— 对外文档已双语，但应用内文案仍为简体中文，尚未引入 i18n 框架。
+- **无自动更新** —— 已配置 tag 触发的安装包构建与 Release 草稿，但应用内没有更新检查，用户需手动下载新版本。
+- **安装包未签名** —— Windows SmartScreen 会提示未知发布者；代码签名证书尚未配置。
 - **`docs/archive/` 下的文档不描述当前行为** —— 归档于 2026-09-16，只作历史参考。设计理由可查，但以代码和本文件为准。
 - **`tailwind.config.ts` 不存在，这是对的** —— 原实现计划提到过它，但 Tailwind v4 + `@tailwindcss/vite` 不需要配置文件。
-- **License 未定** —— `README.md` 中标为 TBD。

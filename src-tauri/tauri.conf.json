@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Sticky Notes",
-  "version": "0.1.7",
-  "identifier": "com.dawnwang.stickynotes",
+  "version": "0.2.0",
+  "identifier": "io.github.ricardo-kaslana.stickynotes",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",

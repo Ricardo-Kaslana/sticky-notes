@@ -1,7 +1,30 @@
 {
   "name": "sticky-notes",
   "private": true,
-  "version": "0.1.7",
+  "version": "0.2.0",
+  "description": "A lightweight, open-source sticky notes desktop app for Windows, built with Tauri, SolidJS and TipTap.",
+  "license": "MIT",
+  "author": "Dawn Wang",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ricardo-Kaslana/sticky-notes.git"
+  },
+  "homepage": "https://github.com/Ricardo-Kaslana/sticky-notes#readme",
+  "bugs": {
+    "url": "https://github.com/Ricardo-Kaslana/sticky-notes/issues"
+  },
+  "keywords": [
+    "sticky-notes",
+    "notes",
+    "desktop-app",
+    "tauri",
+    "solidjs",
+    "tiptap",
+    "windows"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",

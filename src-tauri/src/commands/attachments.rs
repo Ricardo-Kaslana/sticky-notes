@@ -1,8 +1,8 @@
+use super::{atomic_write, validate_id};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tauri::AppHandle;
 use tauri::Manager;
-use super::{atomic_write, validate_id};
 
 const MAX_ATTACHMENT_BYTES: usize = 25 * 1024 * 1024; // 25 MB
 
@@ -36,8 +36,8 @@ fn safe_filename(name: &str) -> Option<String> {
         return None;
     }
     const RESERVED: [&str; 22] = [
-        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7",
-        "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
+        "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
     ];
     let stem = name.split('.').next().unwrap_or("");
     if RESERVED.iter().any(|r| stem.eq_ignore_ascii_case(r)) {
@@ -125,7 +125,10 @@ mod tests {
     #[test]
     fn safe_filename_accepts_normal_names() {
         assert_eq!(safe_filename("image.png"), Some("image.png".into()));
-        assert_eq!(safe_filename("my-file-2026.jpg"), Some("my-file-2026.jpg".into()));
+        assert_eq!(
+            safe_filename("my-file-2026.jpg"),
+            Some("my-file-2026.jpg".into())
+        );
         assert_eq!(safe_filename("a"), Some("a".into()));
     }
 

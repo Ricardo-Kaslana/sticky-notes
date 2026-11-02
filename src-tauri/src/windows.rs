@@ -134,7 +134,9 @@ pub fn get_note_id(window: tauri::Window) -> Result<String, String> {
 pub fn set_note_window_pinned(app: AppHandle, note_id: String, pinned: bool) -> Result<(), String> {
     let label = format!("note-{}", note_id);
     if let Some(window) = app.get_webview_window(&label) {
-        window.set_always_on_top(pinned).map_err(|e| e.to_string())?;
+        window
+            .set_always_on_top(pinned)
+            .map_err(|e| e.to_string())?;
     }
     Ok(())
 }

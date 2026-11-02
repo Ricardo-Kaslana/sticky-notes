@@ -1,9 +1,11 @@
+use super::atomic_write;
+use crate::models::{
+    Settings, COLOR_KEYS, NOTE_ZOOM_MAX, NOTE_ZOOM_MIN, SORT_BY_KEYS, SORT_DIR_KEYS,
+};
 use std::fs;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_autostart::ManagerExt;
-use crate::models::{Settings, COLOR_KEYS, NOTE_ZOOM_MAX, NOTE_ZOOM_MIN, SORT_BY_KEYS, SORT_DIR_KEYS};
-use super::atomic_write;
 
 fn settings_path(app: &AppHandle) -> Result<PathBuf, String> {
     app.path()

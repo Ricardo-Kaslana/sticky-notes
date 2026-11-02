@@ -56,7 +56,7 @@ fn rewrite_attachment_paths(old_dir: &Path, new_dir: &Path) {
     };
     for entry in entries.flatten() {
         let path = entry.path();
-        if path.extension().map_or(true, |e| e != "json") {
+        if path.extension().is_none_or(|e| e != "json") {
             continue;
         }
         let Ok(content) = std::fs::read_to_string(&path) else {
@@ -74,9 +74,13 @@ fn rewrite_attachment_paths(old_dir: &Path, new_dir: &Path) {
     }
 }
 
-/// One-time migration from the pre-v0.1.6 app-data dir (`sticky-notes`, from
-/// the old bare identifier) to the current reverse-domain identifier dir.
-/// Runs before any window exists so nothing races the file moves.
+/// Legacy app-data directory names, newest first. v0.2.0 renamed the
+/// identifier to `io.github.ricardo-kaslana.stickynotes`; v0.1.6 renamed the
+/// bare `sticky-notes` identifier to `com.dawnwang.stickynotes`.
+const LEGACY_APP_DATA_DIRS: &[&str] = &["com.dawnwang.stickynotes", "sticky-notes"];
+
+/// One-time migration from any legacy identifier's app-data dir to the
+/// current one. Runs before any window exists so nothing races the file moves.
 fn migrate_legacy_app_data(app: &tauri::AppHandle) {
     let Ok(new_dir) = app.path().app_data_dir() else {
         return;
@@ -84,15 +88,31 @@ fn migrate_legacy_app_data(app: &tauri::AppHandle) {
     let Some(parent) = new_dir.parent() else {
         return;
     };
-    let old_dir = parent.join("sticky-notes");
-    // Only migrate when the old data exists and the new dir hasn't been
-    // populated yet (a fresh install or an already-migrated install skips).
-    if !old_dir.join("notes").is_dir() || new_dir.join("notes").exists() {
+    migrate_legacy_dirs(parent, &new_dir);
+}
+
+/// Testable half of [`migrate_legacy_app_data`]. `parent` is the directory that
+/// contains all identifier folders (e.g. `%APPDATA%` on Windows).
+fn migrate_legacy_dirs(parent: &Path, new_dir: &Path) {
+    // Once the new identifier owns a notes dir there is nothing to do. This
+    // also makes a fresh install skip migration even if old data exists.
+    if new_dir.join("notes").exists() {
         return;
     }
+    let Some(old_dir) = LEGACY_APP_DATA_DIRS
+        .iter()
+        .map(|name| parent.join(name))
+        .find(|dir| dir.join("notes").is_dir())
+    else {
+        return;
+    };
     log::info!("[migrate] moving app data {:?} -> {:?}", old_dir, new_dir);
-    if let Err(e) = std::fs::create_dir_all(&new_dir) {
-        log::warn!("[migrate] cannot create {:?}: {}; keeping old data", new_dir, e);
+    if let Err(e) = std::fs::create_dir_all(new_dir) {
+        log::warn!(
+            "[migrate] cannot create {:?}: {}; keeping old data",
+            new_dir,
+            e
+        );
         return;
     }
     for name in ["notes", "attachments", "settings.json"] {
@@ -104,7 +124,7 @@ fn migrate_legacy_app_data(app: &tauri::AppHandle) {
             log::warn!("[migrate] failed to move {}: {}", name, e);
         }
     }
-    rewrite_attachment_paths(&old_dir, &new_dir);
+    rewrite_attachment_paths(&old_dir, new_dir);
 }
 
 /// Graceful shutdown: ask every note window to close (their JS
@@ -123,11 +143,7 @@ pub(crate) fn close_notes_and_exit(app: &tauri::AppHandle) {
         // window open via preventDefault, and we exit anyway after the
         // timeout rather than leaving a headless process behind.
         for _ in 0..50 {
-            if !app
-                .webview_windows()
-                .keys()
-                .any(|l| l.starts_with("note-"))
-            {
+            if !app.webview_windows().keys().any(|l| l.starts_with("note-")) {
                 break;
             }
             std::thread::sleep(std::time::Duration::from_millis(100));
@@ -241,4 +257,103 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::path::PathBuf;
+
+    fn migration_root(name: &str) -> PathBuf {
+        let root = std::env::temp_dir().join(format!(
+            "sticky-notes-migration-{}-{}",
+            name,
+            uuid::Uuid::new_v4()
+        ));
+        fs::create_dir_all(&root).unwrap();
+        root
+    }
+
+    fn write_note_with_attachment_url(dir: &Path, id: &str, attachment: &Path) {
+        let notes = dir.join("notes");
+        fs::create_dir_all(&notes).unwrap();
+        let encoded = encode_uri_component(&attachment.to_string_lossy());
+        let content = format!(
+            "{{\"id\":\"{}\",\"content\":\"<p><img src=\\\"http://asset.localhost/{}\\\"></p>\"}}",
+            id, encoded
+        );
+        fs::write(notes.join(format!("{}.json", id)), content).unwrap();
+    }
+
+    #[test]
+    fn migration_prefers_newest_legacy_dir_and_rewrites_attachment_urls() {
+        let root = migration_root("newest");
+        let parent = root.join("Roaming");
+        let newest = parent.join("com.dawnwang.stickynotes");
+        let oldest = parent.join("sticky-notes");
+        let new_dir = parent.join("io.github.ricardo-kaslana.stickynotes");
+        let note_id = "abc-123";
+        let attachment = newest.join("attachments").join(note_id).join("image.png");
+        fs::create_dir_all(attachment.parent().unwrap()).unwrap();
+        fs::write(&attachment, b"png").unwrap();
+        write_note_with_attachment_url(&newest, note_id, &attachment);
+        fs::write(newest.join("settings.json"), "{}").unwrap();
+        fs::create_dir_all(oldest.join("notes")).unwrap();
+        fs::write(oldest.join("notes").join("old.json"), "{}").unwrap();
+
+        migrate_legacy_dirs(&parent, &new_dir);
+
+        let moved =
+            fs::read_to_string(new_dir.join("notes").join(format!("{}.json", note_id))).unwrap();
+        assert!(moved.contains("io.github.ricardo-kaslana.stickynotes"));
+        assert!(!moved.contains("com.dawnwang.stickynotes"));
+        assert!(new_dir.join("settings.json").exists());
+        assert!(new_dir
+            .join("attachments")
+            .join(note_id)
+            .join("image.png")
+            .exists());
+        assert!(!newest.join("notes").exists());
+        // The older bare-identifier dir is not the chosen source.
+        assert!(oldest.join("notes").join("old.json").exists());
+
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn migration_skips_when_new_dir_already_has_notes() {
+        let root = migration_root("skip");
+        let parent = root.join("Roaming");
+        let old = parent.join("com.dawnwang.stickynotes");
+        let new_dir = parent.join("io.github.ricardo-kaslana.stickynotes");
+        fs::create_dir_all(old.join("notes")).unwrap();
+        fs::write(old.join("notes").join("old.json"), "{}").unwrap();
+        fs::create_dir_all(new_dir.join("notes")).unwrap();
+        fs::write(new_dir.join("notes").join("new.json"), "{}").unwrap();
+
+        migrate_legacy_dirs(&parent, &new_dir);
+
+        assert!(old.join("notes").join("old.json").exists());
+        assert!(new_dir.join("notes").join("new.json").exists());
+
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn migration_falls_back_to_bare_identifier() {
+        let root = migration_root("fallback");
+        let parent = root.join("Roaming");
+        let oldest = parent.join("sticky-notes");
+        let new_dir = parent.join("io.github.ricardo-kaslana.stickynotes");
+        fs::create_dir_all(oldest.join("notes")).unwrap();
+        fs::write(oldest.join("notes").join("old.json"), "{}").unwrap();
+
+        migrate_legacy_dirs(&parent, &new_dir);
+
+        assert!(new_dir.join("notes").join("old.json").exists());
+        assert!(!oldest.join("notes").exists());
+
+        fs::remove_dir_all(&root).unwrap();
+    }
 }

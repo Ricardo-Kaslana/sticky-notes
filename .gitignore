@@ -13,31 +13,29 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Rust
 src-tauri/target/
 
 # Environment
 .env
-.env.local
+.env.*
+!.env.example
 
 # Logs
 *.log
+npm-debug.log*
 
-# Claude
+# AI assistant / editor caches
 .claude/
-
-# Superpowers
+.qoder/
+.codegraph/
+.omo/
 .superpowers/
+.workbuddy-ai/
 
 # Backup files
 *.bak
-
-# codegraph
-.codegraph
-
-# Omo
-.omo/
-
-# workbuddy
-.workbuddy-ai
+*.orig
+*.rej

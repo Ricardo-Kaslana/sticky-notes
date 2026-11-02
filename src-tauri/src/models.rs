@@ -26,7 +26,12 @@ pub struct NotePosition {
 impl Default for NotePosition {
     fn default() -> Self {
         // Mirrors DEFAULT_NOTE_POSITION in src/lib/types.ts — keep in sync.
-        Self { x: 100.0, y: 100.0, width: 340.0, height: 320.0 }
+        Self {
+            x: 100.0,
+            y: 100.0,
+            width: 340.0,
+            height: 320.0,
+        }
     }
 }
 
@@ -118,7 +123,7 @@ mod tests {
         assert_eq!(note.title, "");
         assert_eq!(note.content, "<p></p>");
         assert_eq!(note.tags.len(), 0);
-        assert_eq!(note.pinned, false);
+        assert!(!note.pinned);
     }
 
     #[test]

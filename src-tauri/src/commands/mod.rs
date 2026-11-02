@@ -1,5 +1,5 @@
-pub mod notes;
 pub mod attachments;
+pub mod notes;
 pub mod settings;
 
 use std::fs;

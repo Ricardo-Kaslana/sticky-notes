@@ -1,0 +1,80 @@
+name: Bug report
+description: Report a reproducible problem with the app
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug.
+
+        **Do not report security vulnerabilities here.** See [SECURITY.md](https://github.com/Ricardo-Kaslana/sticky-notes/blob/master/SECURITY.md) for private reporting.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the problem.
+      placeholder: When I ..., the app ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. See ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen instead?
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Shown in the window title or on the Releases page.
+      placeholder: v0.2.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Windows version
+      options:
+        - Windows 11
+        - Windows 10
+        - Other (not officially supported)
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Screenshots, logs, or additional context
+      description: Redact personal note content and filesystem paths before posting.
+      placeholder: Drag images here, or paste relevant logs.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true
+        - label: I am using the latest release, or can reproduce this on the current `master` branch.
+          required: true

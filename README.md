@@ -1,164 +1,225 @@
+<div align="center">
+
 # Sticky Notes
 
-A lightweight, high-performance, modern minimalist sticky-notes desktop app for Windows. Built with Tauri 2 + SolidJS + TipTap.
+**A lightweight, local-first sticky notes app for Windows.**
 
-![status](https://img.shields.io/badge/status-v0.1.7-blue)
-![platform](https://img.shields.io/badge/platform-Windows-lightgrey)
+Tauri 2 · SolidJS · TipTap · Tailwind CSS 4
+
+[English](README.md) · [简体中文](README.zh-CN.md)
+
+[![CI](https://github.com/Ricardo-Kaslana/sticky-notes/actions/workflows/ci.yml/badge.svg)](https://github.com/Ricardo-Kaslana/sticky-notes/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Ricardo-Kaslana/sticky-notes?display_name=tag)](https://github.com/Ricardo-Kaslana/sticky-notes/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Platform: Windows](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-lightgrey.svg)](#requirements)
+
+[Download](https://github.com/Ricardo-Kaslana/sticky-notes/releases/latest) · [Features](#features) · [Build from source](#build-from-source) · [Contributing](CONTRIBUTING.md)
+
+</div>
+
+![Sticky Notes main window](docs/assets/main-window.png)
+
+Sticky Notes keeps quick thoughts one click away: a masonry board for everything you have written, and a borderless floating window for each note. Everything is stored as plain JSON on your own disk — no account, no cloud, no telemetry.
+
+> **Project status:** early but usable. Windows 10/11 is the only tested platform. The UI is currently Simplified Chinese; English localization is on the roadmap.
 
 ---
 
 ## Features
 
-- **Masonry grid management view** — sidebar search, tag filter (with live counts), pinned-only filter
-- **Sorting** — by modified time, created time, or title, ascending or descending; the choice is remembered across restarts
-- **Timestamps on every note** — the grid card shows the modification time; the floating window shows both creation and modification time. There is no "last accessed" notion anywhere in the app
-- **Borderless floating note windows** — drag from anywhere, TipTap rich text, color & tag editing, pin-on-top
-- **Zoom and resize** — `− 100% +` in the title bar, `Ctrl` `+` / `-` / `0`, or `Ctrl`+scroll scales the content; drag any edge or corner to resize the window
-- **Layered editor** — the floating window separates toolbar, body text, and tags into three panels
-- **System tray** — left-click reveals main window; menu has Show / New note / Quit
-- **Auto-save** — debounced save on every keystroke (interval configurable in Settings); close the window, reopen, content is there
-- **Settings** — default note color, auto-save interval, close-to-tray behavior (sidebar → 设置); sort order and zoom persist in the same file
-- **Cross-window sync** — edits in a floating window refresh the management view instantly
-- **Six pastel colors** — `paper` / `blush` / `sky` / `sage` / `apricot` / `lavender`, set per-note
-- **Image paste / drop / insert via toolbar** — Ctrl+V, drag a file, or use the toolbar image button. Saved to `attachments/<uuid>/` and rendered as an inline `<img>` via `asset://`.
-- **Plain-JSON persistence** — one file per note in the OS app-data dir, easy to back up, sync, or version
+- **Local-first persistence** — one JSON file per note under the OS app-data directory. Easy to inspect, back up, or version.
+- **Masonry management view** — search, tag filters with live counts, pinned-only filter, and a sort bar (modified time / created time / title, ascending or descending).
+- **Borderless note windows** — drag from anywhere, resize from any edge or corner, pin on top, and reopen exactly where you left them.
+- **Rich text editing** — TipTap-based editor with headings, lists, bold / italic / underline / strikethrough, links, and inline images.
+- **Images by paste, drop, or toolbar** — attachments are copied into the app-data directory and rendered through Tauri's restricted asset protocol.
+- **Auto-save** — debounced saves on every edit; the interval is configurable. Closing a window flushes pending changes.
+- **Six pastel colors** — Paper, Blush, Sky, Sage, Apricot, and Lavender, selectable per note.
+- **Zoom** — `Ctrl` `+` / `-` / `0`, the title-bar zoom control, or `Ctrl`+scroll, from 75% to 200%.
+- **Tags** — autocomplete from existing tags, case-insensitive de-duplication, and tag filtering from the sidebar.
+- **Cross-window sync** — edits in a floating window update the management view immediately.
+- **System tray** — left-click shows the board; the menu can create a note or quit the app.
+- **Privacy by default** — no network requests, no analytics, no background sync.
 
 ---
 
-## Tech stack
+## Download
 
-| Layer | Choice |
-|---|---|
-| Desktop shell | Tauri 2.x |
-| Frontend framework | SolidJS 1.x |
-| Rich text editor | TipTap 2.x (ProseMirror) |
-| Styling | Tailwind CSS 4 |
-| Language | TypeScript (frontend) + Rust (backend) |
+Prebuilt Windows installers are published on the **[Releases](https://github.com/Ricardo-Kaslana/sticky-notes/releases)** page.
+
+- Supported: **Windows 10 / 11 (x64)**.
+- The builds are **unsigned**, so Windows SmartScreen may warn on first launch. Verify that the download comes from this repository before choosing **More info → Run anyway**, or build from source.
+- Auto-update is not implemented yet. Download a newer release manually; note data is preserved across upgrades.
 
 ---
 
-## Prerequisites
+## Requirements
 
-- **Node.js** ≥ 18
-- **Rust** stable toolchain (install via [rustup.rs](https://rustup.rs))
-- **Windows 10 / 11** — Tauri 2 platform requirement. macOS and Linux are untested.
+Building from source requires:
+
+- **Windows 10 / 11**
+- **Node.js 18+** (22 recommended; see `.nvmrc`)
+- **Rust stable** via [rustup](https://rustup.rs)
+- **Microsoft C++ Build Tools** (Desktop development with C++)
+- **WebView2 runtime** — bundled with Windows 11 and recent Windows 10; otherwise install the Evergreen Runtime
+- Tauri's full prerequisite list: <https://v2.tauri.app/start/prerequisites/>
+
+macOS and Linux are not tested. The Rust and Tauri code may compile there, but the tray, window, and autostart paths have only been exercised on Windows.
 
 ---
 
-## Quick start
+## Build from source
 
 ```sh
-npm install
-npm run tauri dev          # full app with Tauri shell + hot reload
+git clone https://github.com/Ricardo-Kaslana/sticky-notes.git
+cd sticky-notes
+npm ci
+npm run tauri dev
 ```
 
-The Vite dev server runs on `http://localhost:1420`. Frontend edits hot-reload instantly; Rust edits trigger a rebuild.
+`npm run tauri dev` starts Vite on `http://localhost:1420`, builds the Rust backend, and opens the app. Frontend edits hot-reload; Rust edits trigger a rebuild.
 
-To work on the frontend without the Tauri shell:
+Frontend-only development (no Tauri backend, so note CRUD will fail):
 
 ```sh
-npm run dev                # Vite only — note CRUD will fail (no Rust backend)
+npm run dev
 ```
 
----
+### Verification
 
-## Build a release binary
+```sh
+npx tsc --noEmit
+npm test
+cd src-tauri && cargo fmt --all -- --check && cargo clippy --all-targets -- -D warnings && cargo test
+```
+
+### Release build
 
 ```sh
 npm run tauri build
 ```
 
-The installer / standalone `.exe` lands in `src-tauri/target/release/bundle/`.
+Installers and the standalone executable land in `src-tauri/target/release/bundle/`.
 
 ---
 
-## Project layout
+## Usage
 
-```
-sticky-notes/
-├── src-tauri/                  Rust backend
-│   ├── src/
-│   │   ├── lib.rs              Tauri builder, command registry, main window + tray
-│   │   ├── models.rs           Note, NotePosition, Settings, color palette
-│   │   ├── commands/
-│   │   │   ├── notes.rs        list / read / write / delete
-│   │   │   ├── attachments.rs  save / delete attachments
-│   │   │   └── settings.rs     read / write settings.json
-│   │   ├── windows.rs          Floating window spawn
-│   │   └── tray.rs             System tray menu + click handlers
-│   └── tauri.conf.json         Tauri config (window, bundle, identifier)
-│
-├── src/                        SolidJS frontend
-│   ├── index.tsx               Entry + manual Switch/Match routing
-│   ├── routes/
-│   │   ├── MainView.tsx        / — sidebar + sort bar + masonry grid
-│   │   └── NoteView.tsx        /note/:id — TipTap editor in floating window
-│   ├── components/             Sidebar, SortBar, NoteCard, MasonryGrid, TagInput, ...
-│   ├── stores/notesStore.ts    SolidJS store — single source of truth
-│   ├── stores/settingsStore.ts Settings signal + normalisation of disk values
-│   ├── lib/                    types, invoke, events, filterNotes, sortNotes, formatTime, zoom
-│   └── utils/debounce.ts
-│
-├── docs/archive/               Historical design specs + plans (reference only)
-│   ├── superpowers/specs/      Approved design specs
-│   ├── superpowers/plans/      Task-by-task implementation plans
-│   └── agents/                 Upstream skill-pack conventions
-│
-├── AGENTS.md                   AI agent conventions (Codex, Claude Code, ...)
-├── README.md                   This file
-└── CHANGELOG.md                Release notes, gaps, fixes
-```
+1. Create a note from the sidebar or from the tray menu.
+2. Double-click a card to open its floating window.
+3. Drag the window by its title bar or body chrome; resize from any edge or corner.
+4. Edit the title and body, add tags, change the color, or pin the window on top.
+5. Close the window — the note is saved and appears on the board instantly.
+6. Closing the main window hides it to the tray by default. Use the tray's **Quit** item to exit; this can be changed in **Settings**.
 
----
+![Floating note window](docs/assets/note-window.png)
 
-## How it works
+### Keyboard shortcuts (note window)
 
-### Persistence
-Notes are stored as one JSON file per note in the OS app-data dir, under the app identifier `com.dawnwang.stickynotes`:
-
-| OS | Path |
+| Shortcut | Action |
 |---|---|
-| Windows | `%APPDATA%\com.dawnwang.stickynotes\notes\<uuid>.json` |
-| macOS | `~/Library/Application Support/com.dawnwang.stickynotes/notes/<uuid>.json` |
-| Linux | `~/.local/share/com.dawnwang.stickynotes/notes/<uuid>.json` |
-
-Settings live next to them as `settings.json`. Attachments are stored under `attachments/<note-uuid>/`.
-
-Only the Windows path is actually exercised — the other two follow from Tauri's app-data convention on platforms this project has never run on.
-
-Notes written before v0.1.6 sit in a sibling `sticky-notes` directory (the old bare identifier). `lib.rs::migrate_legacy_app_data` moves them — and rewrites the absolute attachment URLs embedded in each note JSON — on the first launch after the identifier change.
-
-### Floating window note-ID delivery
-Each floating note is its own Tauri webview window. The note ID reaches the frontend through three layered mechanisms (`windows.rs` → `src/index.tsx`): an optimistic `initialization_script` setting `window.__NOTE_ID__`, an `on_page_load` `eval()` of the same, and a `get_note_id` IPC command (reads `window.label()`) as the reliable fallback. The URL itself stays clean (`index.html`).
-
-### Cross-window sync
-- An edit in the floating window calls `write_note` (Tauri `invoke`).
-- The Rust handler writes the JSON file **and** emits a `note-updated` event.
-- The management view's listener (`src/lib/events.ts` → `onNoteUpdated`) re-fetches the note list.
-- A delete follows the same pattern with the `note-deleted` event.
-
-### Window state persistence
-On every auto-save, the floating window reads `getCurrentWindow().outerPosition()` and `.outerSize()`, divides both by `scaleFactor()`, and stores the result in `note.position`. On reopen, those values are passed to `open_note_window` so the window appears exactly where the user left it.
-
-### Sorting and timestamps
-Ordering is decided in exactly one place — `src/lib/sortNotes.ts` — and applied after filtering. Notes carry only `createdAt` and `updatedAt`: there is no access-time field and no sort key that depends on opening a note, so the grid never reorders itself as a side effect of reading. The sort key and direction are stored in `settings.json` alongside the other preferences. Title sorting uses a `zh-Hans-CN` collator (pinyin order, natural number order, case-insensitive) and always sinks untitled notes to the bottom.
-
-### Note zoom
-Zoom scales the document root font size instead of applying a CSS transform, so every rem-based Tailwind utility — text, padding, icons — grows together and layout still reflows normally. That is why sizes inside the note window are written in rem, including icon sizes: lucide's `size` prop emits px `width`/`height` attributes and would silently ignore the zoom. Window resizing is a separate gesture — `ResizeHandles` hands the drag to the OS via `startResizeDragging`, which is what keeps native snapping on a borderless window.
-
-### Main window → tray
-By default, closing the main window calls `prevent_close()` + `hide()` in `lib.rs` — the app stays alive in the tray with floating note windows intact, and only the tray's **Quit** menu item calls `app.exit(0)`. Turning off "close to tray" in Settings makes the close button quit the app instead.
+| `Ctrl` `+` / `Ctrl` `=` | Zoom in |
+| `Ctrl` `-` | Zoom out |
+| `Ctrl` `0` | Reset zoom to 100% |
+| `Ctrl` + scroll | Zoom in / out |
+| `Ctrl` `B` / `I` / `U` | Bold / italic / underline |
 
 ---
 
-## Documentation
+## Data and privacy
 
-- **[CHANGELOG.md](CHANGELOG.md)** — release notes, known gaps, integration fixes
-- **[AGENTS.md](AGENTS.md)** — conventions for AI coding agents
-- **[docs/archive/](docs/archive/README.md)** — archived design specs and implementation plans, indexed by date and scope. Historical reference only; the code and CHANGELOG.md are authoritative.
+All data stays on the machine. Notes are JSON files, settings live next to them, and attachments are copied into per-note folders.
+
+| Data | Location (Windows) |
+|---|---|
+| Notes | `%APPDATA%\io.github.ricardo-kaslana.stickynotes\notes\<uuid>.json` |
+| Settings | `%APPDATA%\io.github.ricardo-kaslana.stickynotes\settings.json` |
+| Attachments | `%APPDATA%\io.github.ricardo-kaslana.stickynotes\attachments\<note-uuid>\` |
+
+**Backup:** copy the whole `io.github.ricardo-kaslana.stickynotes` folder. There is no import/export feature and no built-in synchronization.
+
+**Upgrades:** v0.2.0 renamed the application identifier. On first launch, notes, attachments, and settings are automatically moved from the previous `com.dawnwang.stickynotes` directory (and, for older installations, from the bare `sticky-notes` directory). Absolute attachment URLs inside note JSON are rewritten as part of the move. Keep a backup before switching versions if the data matters to you.
+
+---
+
+## Architecture
+
+```mermaid
+flowchart LR
+  UI[SolidJS + TipTap] -->|invoke| CMD[Tauri commands]
+  CMD -->|atomic writes| FS[(JSON files)]
+  CMD -->|note-updated / note-deleted| UI
+  UI -->|open_note_window| WIN[Floating webview windows]
+```
+
+| Layer | Choice |
+|---|---|
+| Desktop shell | Tauri 2 |
+| Backend | Rust |
+| Frontend | SolidJS 1.x + TypeScript |
+| Editor | TipTap 2 (ProseMirror) |
+| Styling | Tailwind CSS 4 |
+| Tests | Vitest (frontend) + Cargo test (Rust) |
+
+### Why this shape
+
+- **No database.** A note is a file. Users can read, copy, and diff their data without tooling.
+- **One window per note.** Each note is an independent webview window, so opening several notes does not block the main board.
+- **Backend owns persistence and events.** The frontend never writes files directly. Rust writes atomically and emits `note-updated` / `note-deleted`; every window updates from those events.
+- **Manual routing instead of a router.** Tauri's webview URL handling was unreliable for the note-ID flow, so routing is a small `Switch/Match` in `src/index.tsx`.
+
+### Project layout
+
+```text
+sticky-notes/
+├── src-tauri/                 Rust backend
+│   ├── src/
+│   │   ├── lib.rs             Builder, setup, legacy data migration
+│   │   ├── models.rs          Note, NotePosition, Settings
+│   │   ├── commands/          notes / attachments / settings commands
+│   │   ├── windows.rs         Floating window lifecycle
+│   │   └── tray.rs            System tray
+│   ├── capabilities/          Tauri permission allow-list
+│   └── tauri.conf.json        Identifier, CSP, bundle configuration
+├── src/                       SolidJS frontend
+│   ├── routes/                MainView, NoteView
+│   ├── components/            Sidebar, NoteCard, editor chrome, dialogs
+│   ├── stores/                Notes and settings state
+│   └── lib/                   Typed IPC, events, sorting, filtering, zoom
+├── docs/archive/              Historical design notes (not current docs)
+├── .github/workflows/         CI and release automation
+├── AGENTS.md                  Conventions for AI coding agents
+└── CHANGELOG.md               Release notes (Simplified Chinese)
+```
+
+---
+
+## Known limitations
+
+- Windows only in practice; macOS/Linux are untested.
+- Light theme only.
+- Simplified Chinese UI only; English localization has not been implemented.
+- No auto-update, sync, or import/export.
+- Installers are unsigned.
+
+These are tracked in [CHANGELOG.md](CHANGELOG.md) and [AGENTS.md](AGENTS.md). Contributions that close them are welcome.
+
+---
+
+## Contributing
+
+Bug reports, feature ideas, documentation fixes, and pull requests are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), and please follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+- **Security issues:** do not open a public issue; see [SECURITY.md](SECURITY.md).
+- **AI-assisted contributions:** read [AGENTS.md](AGENTS.md) for the project's hard rules before changing code.
+
+If this project is useful to you, a star helps others find it.
 
 ---
 
 ## License
 
-TBD.
+Released under the [MIT License](LICENSE). Copyright © 2026 Dawn Wang.
+
+## Acknowledgements
+
+Built with [Tauri](https://tauri.app), [SolidJS](https://www.solidjs.com), [TipTap](https://tiptap.dev), [Tailwind CSS](https://tailwindcss.com), and [Lucide](https://lucide.dev). Thanks to the maintainers of those projects.
